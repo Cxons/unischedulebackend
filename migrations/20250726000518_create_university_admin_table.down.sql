@@ -1,0 +1,1 @@
+DROP TABLE university_admin;

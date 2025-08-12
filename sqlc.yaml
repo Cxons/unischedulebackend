@@ -1,0 +1,16 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema:
+      - "./internal/registration/db/schema.sql"
+      - "./internal/auth/db/schema.sql"
+      - "./internal/university/db/schema.sql"
+    queries:
+      - "./internal/registration/db/queries.sql"
+      - "./internal/auth/db/queries.sql"
+      - "./internal/university/db/queries.sql"
+
+    gen:
+      go:
+        package: "db"
+        out: "./internal/shared/db"

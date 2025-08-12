@@ -1,0 +1,1 @@
+DROP INDEX unique_current_dean ON current_dean;

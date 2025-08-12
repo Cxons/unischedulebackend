@@ -1,0 +1,1 @@
+DROP INDEX unique_current_hod ON current_hod;

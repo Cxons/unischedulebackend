@@ -1,0 +1,22 @@
+# Binaries
+main
+*.exe
+
+# Vendor dependencies
+vendor/
+
+# Temporary files
+*.tmp
+
+# IDE and editor files
+.idea/
+.vscode/
+.vs/
+.DS_Store
+
+# Build artifacts
+*.o
+*.a
+
+# Environment-specific files
+.env
