@@ -21,28 +21,65 @@ type CreateUniversityDto struct {
 	CurrentSession string `json:"currentSession" validate:"required"`
 }
 
+type CreateFacultyDto struct {
+	FacultyName string `json:"facultyName" validate:"required"`
+	FacultyCode string `json:"facultyCode" validate:"required"`
+	UniversityId string `json:"universityId" validate:"required"`
+}
+
+type CreateDepartmentDto struct {
+	DepartmentName string `json:"departmentName" validate:"required"`
+	DepartmentCode string `json:"departmentCode" validate:"required"`
+	UniversityId string `json:"universityId" validate:"required"`
+	FacultyId string `json:"facultyId" validate:"required"`
+}
+
 type RequestDeanConfirmationDto struct {
-	LecturerId string `json:"lecturerId" validate:"required"`
 	PotentialFaculty string `json:"potentialFaculty" validate:"required"`
 	AdditionalMessage string `json:"addtionalMessage" validate:"omitempty"`
 	UniversityId string `json:"universityId" validate:"required"`
 }
 
 type RequestHodConfirmationDto struct {
-	LecturerId string `json:"lecturerId" validate:"required"`
 	PotentialDepartment string `json:"potentialDepartment" validate:"required"`
 	AdditionalMessage string `json:"additionalMessage" validate:"omitempty"`
 	UniversityId string `json:"universityId" validate:"required"`
 	FacultyId string `json:"facultyId" validate:"required"`
 }
 
+type PendingHodDto struct {
+	UniversityId string `json:"universityId" validate:"required"`
+	FacultyId string `json:"facultyId" validate:"required"`
+}
 
-type RequestLecturerConfirmationDto struct {
-	LecturerId string `json:"lecturerId" validate:"required"`
-	AdditionalMessage string `json:"addtionalMessage" validate:"omitempty"`
+type PendingLecturerDto struct {
 	UniversityId string `json:"universityId" validate:"required"`
 	FacultyId string `json:"facultyId" validate:"required"`
 	DepartmentId string `json:"departmentId" validate:"required"`
+}
+
+
+type RequestLecturerConfirmationDto struct {
+	AdditionalMessage string `json:"addtionalMessage" validate:"omitempty"`
+	UniversityId string `json:"ungiversityId" validate:"required"`
+	FacultyId string `json:"facultyId" validate:"required"`
+	DepartmentId string `json:"departmentId" validate:"required"`
+}
+
+
+type CreateDeanDto struct {
+	LecturerId string `json:"lecturerId" validate:"required"`
+	FacultyId string `json:"facultyId" validate:"required"`
+	UniversityId string `json:"universityId" validate:"required"`
+	StartDate string `json:"startDate" validate:"required"`
+	EndDate string `json:"endDate" validate:"required"`
+}
+type CreateHodDto struct {
+	LecturerId string `json:"lecturerId" validate:"required"`
+	DepartmentId string `json:"facultyId" validate:"required"`
+	UniversityId string `json:"universityId" validate:"required"`
+	StartDate string `json:"startDate" validate:"required"`
+	EndDate string `json:"endDate" validate:"required"`
 }
 // type CreateUniversityParams struct {
 //     UniversityName string

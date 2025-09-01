@@ -9,7 +9,7 @@ import (
 
 
 func Routes(authHandler authHandler.AuthHandler) chi.Router {
-	r := chi.NewRouter()
+	r:= chi.NewRouter()
 	r.Post("/register",authHandler.Register)
 	r.Post("/login",authHandler.Login)
 	r.Get("/accesstoken",authHandler.RefreshAccessToken)

@@ -32,9 +32,7 @@ type LoginResponseData struct {
 type RefreshAccessTokenData struct {
 	AccessToken string
 }
-type UserContext struct {
-	Value string
-}
+
 // type RegisterLecturerDto struct {
 // 	First_Name string `json:"first_name" validate:"required,alpha"`
 // 	Last_Name string `json:"last_name" validate:"required,alpha"`

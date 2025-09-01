@@ -1,0 +1,1 @@
+DROP TABLE hod_waiting_list;

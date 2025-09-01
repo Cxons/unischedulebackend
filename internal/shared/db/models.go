@@ -11,6 +11,37 @@ import (
 	"github.com/google/uuid"
 )
 
+type Course struct {
+	CourseID         uuid.UUID
+	CourseCode       string
+	CourseTitle      string
+	CourseCreditUnit int32
+	CourseDuration   int32
+	DepartmentID     uuid.UUID
+	UniversityID     uuid.UUID
+	LecturerID       uuid.NullUUID
+	SessionsPerWeek  int32
+	Level            int32
+	Semester         string
+	CreatedAt        sql.NullTime
+	UpdatedAt        sql.NullTime
+}
+
+type CoursesLecturer struct {
+	CourseID   uuid.UUID
+	LecturerID uuid.UUID
+	CreatedAt  sql.NullTime
+	UpdatedAt  sql.NullTime
+}
+
+type CoursesPossibleVenue struct {
+	CourseID     uuid.UUID
+	VenueID      uuid.UUID
+	UniversityID uuid.NullUUID
+	CreatedAt    sql.NullTime
+	UpdatedAt    sql.NullTime
+}
+
 type CurrentDean struct {
 	DeanID       uuid.UUID
 	LecturerID   uuid.NullUUID

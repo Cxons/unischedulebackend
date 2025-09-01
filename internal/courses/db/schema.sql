@@ -6,6 +6,7 @@ CREATE TABLE courses(
     course_code TEXT NOT NULL,
     course_title TEXT NOT NULL,
     course_credit_unit INT NOT NULL,
+    course_duration INT NOT NULL,
     department_id UUID NOT NULL REFERENCES departments(department_id) ON DELETE CASCADE,
     university_id UUID NOT NULL REFERENCES universities(university_id) ON DELETE CASCADE,
     UNIQUE(course_code,university_id),
@@ -25,3 +26,12 @@ CREATE TABLE courses_possible_venues(
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );  
+
+
+CREATE TABLE courses_lecturers(
+    course_id UUID REFERENCES courses(course_id) ON DELETE CASCADE,
+    lecturer_id UUID REFERENCES lecturers(lecturer_id) ON DELETE CASCADE,
+    PRIMARY KEY(course_id,lecturer_id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);

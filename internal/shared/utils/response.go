@@ -6,6 +6,7 @@ import (
 
 	"github.com/Cxons/unischedulebackend/internal/shared/dto"
 	status "github.com/Cxons/unischedulebackend/pkg/statuscodes"
+	"github.com/Cxons/unischedulebackend/pkg/validator"
 )
 
 
@@ -26,4 +27,17 @@ func HandleAuthResponse(resp dto.ResponseDto,err error,errMsg string, res http.R
     http.Error(res, status.InternalServerError.Message, status.InternalServerError.Code)
     return
 }
+}
+
+
+
+func HandleBodyParsing(req *http.Request, res http.ResponseWriter, body interface{}){
+	if err:= json.NewDecoder(req.Body).Decode(&body); err!=nil{
+		http.Error(res,"Invalid Request Body",status.BadRequest.Code)
+		return
+	}
+	if err := validator.ValidateStruct(body); err!= nil{
+		http.Error(res,"Validation Error: " + err.Error(),status.BadRequest.Code)
+		return
+	}
 }

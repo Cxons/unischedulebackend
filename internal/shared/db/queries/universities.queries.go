@@ -28,3 +28,6 @@ func (uq *UniQueries) RetrieveAllUniversities(ctx context.Context)([]sqlc.Univer
 func (uq *UniQueries) RetrieveAllUniversitiesWithLimit(ctx context.Context,limit int32)([]sqlc.University,error){
 	return uq.q.RetrieveUniversitiesWithLimit(ctx,limit)
 }
+func (uq *UniQueries) UpdateUniversity(ctx context.Context,uniParams sqlc.UpdateUniversityParams)(sqlc.University,error){
+	return uq.q.UpdateUniversity(ctx,uniParams)
+}

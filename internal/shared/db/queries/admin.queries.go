@@ -16,8 +16,13 @@ func NewAdminQueries(q *sqlc.Queries) *AdminQueries{
 		q:q,
 	}
 }
+
 func (aq *AdminQueries) RegisterAdmin(ctx context.Context,admin sqlc.RegisterUniversityAdminParams)(sqlc.UniversityAdmin,error){
 	return aq.q.RegisterUniversityAdmin(ctx,admin)
+}
+
+func (aq *AdminQueries) RetrieveAdmin(ctx context.Context,adminId uuid.UUID)(sqlc.RetrieveAdminRow,error){
+	return aq.q.RetrieveAdmin(ctx,adminId)
 }
 func (aq *AdminQueries) RetrieveAdminEmail(ctx context.Context,email string)(sqlc.RetrieveAdminEmailRow,error){
 	return aq.q.RetrieveAdminEmail(ctx,email)

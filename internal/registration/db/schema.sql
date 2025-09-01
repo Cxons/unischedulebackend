@@ -124,7 +124,6 @@ CREATE TABLE lecturer_waiting_list(
 );
 
 
-
 -- for days and times lecturers would not be available
 CREATE TABLE lecturer_unavailability (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -145,6 +144,7 @@ CREATE TABLE student_courses_offered(
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
 
 
 

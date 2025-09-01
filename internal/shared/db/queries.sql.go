@@ -133,6 +133,192 @@ func (q *Queries) CheckAndReturnToken(ctx context.Context, userID uuid.UUID) (Ch
 	return i, err
 }
 
+const checkDeanConfirmation = `-- name: CheckDeanConfirmation :one
+SELECT 
+    l.lecturer_id,
+    l.lecturer_first_name,
+    l.lecturer_last_name,
+    l.lecturer_profile_pic,
+    dwl.potential_faculty,
+    dwl.additional_message,
+    dwl.approved
+FROM 
+    dean_waiting_list dwl
+INNER JOIN 
+    lecturers l ON dwl.lecturer_id = l.lecturer_id
+WHERE 
+    dwl.wait_id = $1
+`
+
+type CheckDeanConfirmationRow struct {
+	LecturerID         uuid.UUID
+	LecturerFirstName  string
+	LecturerLastName   string
+	LecturerProfilePic sql.NullString
+	PotentialFaculty   string
+	AdditionalMessage  sql.NullString
+	Approved           sql.NullBool
+}
+
+func (q *Queries) CheckDeanConfirmation(ctx context.Context, waitID uuid.UUID) (CheckDeanConfirmationRow, error) {
+	row := q.db.QueryRowContext(ctx, checkDeanConfirmation, waitID)
+	var i CheckDeanConfirmationRow
+	err := row.Scan(
+		&i.LecturerID,
+		&i.LecturerFirstName,
+		&i.LecturerLastName,
+		&i.LecturerProfilePic,
+		&i.PotentialFaculty,
+		&i.AdditionalMessage,
+		&i.Approved,
+	)
+	return i, err
+}
+
+const checkHodConfirmation = `-- name: CheckHodConfirmation :one
+SELECT 
+    l.lecturer_id,
+    l.lecturer_first_name,
+    l.lecturer_last_name,
+    l.lecturer_profile_pic,
+    hwl.potential_department,
+    hwl.additional_message,
+    hwl.approved
+FROM 
+    hod_waiting_list hwl
+INNER JOIN 
+    lecturers l ON hwl.lecturer_id = l.lecturer_id
+WHERE 
+    hwl.wait_id = $1
+`
+
+type CheckHodConfirmationRow struct {
+	LecturerID          uuid.UUID
+	LecturerFirstName   string
+	LecturerLastName    string
+	LecturerProfilePic  sql.NullString
+	PotentialDepartment string
+	AdditionalMessage   sql.NullString
+	Approved            sql.NullBool
+}
+
+func (q *Queries) CheckHodConfirmation(ctx context.Context, waitID uuid.UUID) (CheckHodConfirmationRow, error) {
+	row := q.db.QueryRowContext(ctx, checkHodConfirmation, waitID)
+	var i CheckHodConfirmationRow
+	err := row.Scan(
+		&i.LecturerID,
+		&i.LecturerFirstName,
+		&i.LecturerLastName,
+		&i.LecturerProfilePic,
+		&i.PotentialDepartment,
+		&i.AdditionalMessage,
+		&i.Approved,
+	)
+	return i, err
+}
+
+const checkLecturerConfirmation = `-- name: CheckLecturerConfirmation :one
+SELECT 
+    l.lecturer_id,
+    l.lecturer_first_name,
+    l.lecturer_last_name,
+    l.lecturer_profile_pic,
+    lwl.additional_message,
+    lwl.approved 
+FROM lecturer_waiting_list lwl
+INNER JOIN 
+    lecturers l ON lwl.lecturer_id = l.lecturer_id
+WHERE 
+    lwl.wait_id = $1
+`
+
+type CheckLecturerConfirmationRow struct {
+	LecturerID         uuid.UUID
+	LecturerFirstName  string
+	LecturerLastName   string
+	LecturerProfilePic sql.NullString
+	AdditionalMessage  sql.NullString
+	Approved           sql.NullBool
+}
+
+func (q *Queries) CheckLecturerConfirmation(ctx context.Context, waitID uuid.UUID) (CheckLecturerConfirmationRow, error) {
+	row := q.db.QueryRowContext(ctx, checkLecturerConfirmation, waitID)
+	var i CheckLecturerConfirmationRow
+	err := row.Scan(
+		&i.LecturerID,
+		&i.LecturerFirstName,
+		&i.LecturerLastName,
+		&i.LecturerProfilePic,
+		&i.AdditionalMessage,
+		&i.Approved,
+	)
+	return i, err
+}
+
+const createCourse = `-- name: CreateCourse :one
+INSERT INTO courses(
+    course_code,
+    course_title,
+    course_credit_unit,
+    department_id,
+    university_id,
+    lecturer_id,
+    sessions_per_week,
+    level,
+    semester,
+    course_duration
+)
+VALUES(
+    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10
+)
+RETURNING course_id, course_code, course_title, course_credit_unit, course_duration, department_id, university_id, lecturer_id, sessions_per_week, level, semester, created_at, updated_at
+`
+
+type CreateCourseParams struct {
+	CourseCode       string
+	CourseTitle      string
+	CourseCreditUnit int32
+	DepartmentID     uuid.UUID
+	UniversityID     uuid.UUID
+	LecturerID       uuid.NullUUID
+	SessionsPerWeek  int32
+	Level            int32
+	Semester         string
+	CourseDuration   int32
+}
+
+func (q *Queries) CreateCourse(ctx context.Context, arg CreateCourseParams) (Course, error) {
+	row := q.db.QueryRowContext(ctx, createCourse,
+		arg.CourseCode,
+		arg.CourseTitle,
+		arg.CourseCreditUnit,
+		arg.DepartmentID,
+		arg.UniversityID,
+		arg.LecturerID,
+		arg.SessionsPerWeek,
+		arg.Level,
+		arg.Semester,
+		arg.CourseDuration,
+	)
+	var i Course
+	err := row.Scan(
+		&i.CourseID,
+		&i.CourseCode,
+		&i.CourseTitle,
+		&i.CourseCreditUnit,
+		&i.CourseDuration,
+		&i.DepartmentID,
+		&i.UniversityID,
+		&i.LecturerID,
+		&i.SessionsPerWeek,
+		&i.Level,
+		&i.Semester,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createDean = `-- name: CreateDean :one
 INSERT INTO current_dean(
     lecturer_id,faculty_id,university_id,start_date,end_date
@@ -321,6 +507,68 @@ func (q *Queries) CreateUniversity(ctx context.Context, arg CreateUniversityPara
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const createVenue = `-- name: CreateVenue :one
+INSERT INTO venues(
+    venue_name,
+    venue_longitude,
+    venue_latitude,
+    location,
+    venue_image,
+    capacity,
+    university_id
+)VALUES(
+    $1,$2,$3,$4,$5,$6,$7
+)
+RETURNING venue_id, venue_name, venue_longitude, venue_latitude, location, venue_image, capacity, university_id, is_active, created_at, updated_at
+`
+
+type CreateVenueParams struct {
+	VenueName      string
+	VenueLongitude sql.NullFloat64
+	VenueLatitude  sql.NullFloat64
+	Location       sql.NullString
+	VenueImage     sql.NullString
+	Capacity       int32
+	UniversityID   uuid.UUID
+}
+
+func (q *Queries) CreateVenue(ctx context.Context, arg CreateVenueParams) (Venue, error) {
+	row := q.db.QueryRowContext(ctx, createVenue,
+		arg.VenueName,
+		arg.VenueLongitude,
+		arg.VenueLatitude,
+		arg.Location,
+		arg.VenueImage,
+		arg.Capacity,
+		arg.UniversityID,
+	)
+	var i Venue
+	err := row.Scan(
+		&i.VenueID,
+		&i.VenueName,
+		&i.VenueLongitude,
+		&i.VenueLatitude,
+		&i.Location,
+		&i.VenueImage,
+		&i.Capacity,
+		&i.UniversityID,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteCourse = `-- name: DeleteCourse :exec
+DELETE FROM courses
+WHERE course_id = $1
+`
+
+func (q *Queries) DeleteCourse(ctx context.Context, courseID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteCourse, courseID)
+	return err
 }
 
 const deleteRefreshToken = `-- name: DeleteRefreshToken :one
@@ -622,6 +870,44 @@ func (q *Queries) RequestLecturerConfirmation(ctx context.Context, arg RequestLe
 	return i, err
 }
 
+const retrieveAdmin = `-- name: RetrieveAdmin :one
+SELECT 
+    admin_first_name,
+    admin_middle_name,
+    admin_email,
+    admin_phone_number,
+    admin_staff_card,
+    admin_number,
+    university_id
+FROM university_admin
+WHERE admin_id = $1
+`
+
+type RetrieveAdminRow struct {
+	AdminFirstName   string
+	AdminMiddleName  sql.NullString
+	AdminEmail       string
+	AdminPhoneNumber sql.NullString
+	AdminStaffCard   sql.NullString
+	AdminNumber      sql.NullString
+	UniversityID     uuid.NullUUID
+}
+
+func (q *Queries) RetrieveAdmin(ctx context.Context, adminID uuid.UUID) (RetrieveAdminRow, error) {
+	row := q.db.QueryRowContext(ctx, retrieveAdmin, adminID)
+	var i RetrieveAdminRow
+	err := row.Scan(
+		&i.AdminFirstName,
+		&i.AdminMiddleName,
+		&i.AdminEmail,
+		&i.AdminPhoneNumber,
+		&i.AdminStaffCard,
+		&i.AdminNumber,
+		&i.UniversityID,
+	)
+	return i, err
+}
+
 const retrieveAdminEmail = `-- name: RetrieveAdminEmail :one
 SELECT admin_id,admin_email,admin_password FROM university_admin WHERE admin_email = $1
 `
@@ -676,6 +962,106 @@ func (q *Queries) RetrieveAllUniversities(ctx context.Context) ([]University, er
 		return nil, err
 	}
 	return items, nil
+}
+
+const retrieveCoursesForADepartment = `-- name: RetrieveCoursesForADepartment :many
+SELECT
+    course_code,
+    course_title,
+    course_credit_unit,
+    course_duration,
+    department_id,
+    university_id,
+    lecturer_id,
+    sessions_per_week,
+    level,
+    semester
+FROM courses
+WHERE department_id = $1 AND university_id = $2
+`
+
+type RetrieveCoursesForADepartmentParams struct {
+	DepartmentID uuid.UUID
+	UniversityID uuid.UUID
+}
+
+type RetrieveCoursesForADepartmentRow struct {
+	CourseCode       string
+	CourseTitle      string
+	CourseCreditUnit int32
+	CourseDuration   int32
+	DepartmentID     uuid.UUID
+	UniversityID     uuid.UUID
+	LecturerID       uuid.NullUUID
+	SessionsPerWeek  int32
+	Level            int32
+	Semester         string
+}
+
+func (q *Queries) RetrieveCoursesForADepartment(ctx context.Context, arg RetrieveCoursesForADepartmentParams) ([]RetrieveCoursesForADepartmentRow, error) {
+	rows, err := q.db.QueryContext(ctx, retrieveCoursesForADepartment, arg.DepartmentID, arg.UniversityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RetrieveCoursesForADepartmentRow
+	for rows.Next() {
+		var i RetrieveCoursesForADepartmentRow
+		if err := rows.Scan(
+			&i.CourseCode,
+			&i.CourseTitle,
+			&i.CourseCreditUnit,
+			&i.CourseDuration,
+			&i.DepartmentID,
+			&i.UniversityID,
+			&i.LecturerID,
+			&i.SessionsPerWeek,
+			&i.Level,
+			&i.Semester,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const retrieveDean = `-- name: RetrieveDean :one
+SELECT
+    lecturer_id,
+    faculty_id,
+    university_id,
+    start_date,
+    end_date
+FROM current_dean
+WHERE dean_id = $1
+`
+
+type RetrieveDeanRow struct {
+	LecturerID   uuid.NullUUID
+	FacultyID    uuid.NullUUID
+	UniversityID uuid.NullUUID
+	StartDate    time.Time
+	EndDate      sql.NullTime
+}
+
+func (q *Queries) RetrieveDean(ctx context.Context, deanID uuid.UUID) (RetrieveDeanRow, error) {
+	row := q.db.QueryRowContext(ctx, retrieveDean, deanID)
+	var i RetrieveDeanRow
+	err := row.Scan(
+		&i.LecturerID,
+		&i.FacultyID,
+		&i.UniversityID,
+		&i.StartDate,
+		&i.EndDate,
+	)
+	return i, err
 }
 
 const retrieveDeptsForAFaculty = `-- name: RetrieveDeptsForAFaculty :many
@@ -754,6 +1140,38 @@ func (q *Queries) RetrieveFacultiesForAUni(ctx context.Context, universityID uui
 	return items, nil
 }
 
+const retrieveHod = `-- name: RetrieveHod :one
+SELECT 
+    lecturer_id,
+    department_id,
+    university_id,
+    start_date,
+    end_date
+FROM current_hod
+WHERE hod_id = $1
+`
+
+type RetrieveHodRow struct {
+	LecturerID   uuid.NullUUID
+	DepartmentID uuid.NullUUID
+	UniversityID uuid.NullUUID
+	StartDate    time.Time
+	EndDate      sql.NullTime
+}
+
+func (q *Queries) RetrieveHod(ctx context.Context, hodID uuid.UUID) (RetrieveHodRow, error) {
+	row := q.db.QueryRowContext(ctx, retrieveHod, hodID)
+	var i RetrieveHodRow
+	err := row.Scan(
+		&i.LecturerID,
+		&i.DepartmentID,
+		&i.UniversityID,
+		&i.StartDate,
+		&i.EndDate,
+	)
+	return i, err
+}
+
 const retrieveLecturerEmail = `-- name: RetrieveLecturerEmail :one
 SELECT lecturer_id,lecturer_email,lecturer_password FROM lecturers WHERE lecturer_email = $1
 `
@@ -788,7 +1206,9 @@ func (q *Queries) RetrieveOtp(ctx context.Context, email string) (RetrieveOtpRow
 }
 
 const retrievePendingDeans = `-- name: RetrievePendingDeans :many
-SELECT wait_id, lecturer_id, potential_faculty, additional_message, university_id, approved FROM dean_waiting_list WHERE university_id = $1
+SELECT wait_id, lecturer_id, potential_faculty, additional_message, university_id, approved FROM dean_waiting_list 
+WHERE university_id = $1 
+AND approved = FALSE
 `
 
 func (q *Queries) RetrievePendingDeans(ctx context.Context, universityID uuid.UUID) ([]DeanWaitingList, error) {
@@ -823,7 +1243,9 @@ func (q *Queries) RetrievePendingDeans(ctx context.Context, universityID uuid.UU
 
 const retrievePendingHods = `-- name: RetrievePendingHods :many
 SELECT wait_id, lecturer_id, potential_department, additional_message, university_id, faculty_id, approved FROM hod_waiting_list 
-WHERE university_id = $1 AND faculty_id = $2
+WHERE university_id = $1 
+AND faculty_id = $2 
+AND approved = FALSE
 `
 
 type RetrievePendingHodsParams struct {
@@ -864,7 +1286,10 @@ func (q *Queries) RetrievePendingHods(ctx context.Context, arg RetrievePendingHo
 
 const retrievePendingLecturers = `-- name: RetrievePendingLecturers :many
 SELECT wait_id, lecturer_id, additional_message, university_id, faculty_id, department_id, approved FROM lecturer_waiting_list
-WHERE university_id = $1 AND faculty_id = $2 AND department_id = $3
+WHERE university_id = $1 
+AND faculty_id = $2 
+AND department_id = $3
+AND approved = FALSE
 `
 
 type RetrievePendingLecturersParams struct {
@@ -982,6 +1407,102 @@ func (q *Queries) RevokeRefreshToken(ctx context.Context, userID uuid.UUID) (Ref
 	return i, err
 }
 
+const setCourseLecturers = `-- name: SetCourseLecturers :one
+INSERT INTO courses_lecturers(
+    course_id,lecturer_id
+)VALUES(
+    $1,$2
+)
+RETURNING course_id, lecturer_id, created_at, updated_at
+`
+
+type SetCourseLecturersParams struct {
+	CourseID   uuid.UUID
+	LecturerID uuid.UUID
+}
+
+func (q *Queries) SetCourseLecturers(ctx context.Context, arg SetCourseLecturersParams) (CoursesLecturer, error) {
+	row := q.db.QueryRowContext(ctx, setCourseLecturers, arg.CourseID, arg.LecturerID)
+	var i CoursesLecturer
+	err := row.Scan(
+		&i.CourseID,
+		&i.LecturerID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const setDepartmentVenue = `-- name: SetDepartmentVenue :exec
+INSERT INTO dept_venues(
+    venue_id,
+    department_id,
+    university_id
+)
+VALUES(
+    $1,$2,$3
+)
+`
+
+type SetDepartmentVenueParams struct {
+	VenueID      uuid.UUID
+	DepartmentID uuid.UUID
+	UniversityID uuid.UUID
+}
+
+func (q *Queries) SetDepartmentVenue(ctx context.Context, arg SetDepartmentVenueParams) error {
+	_, err := q.db.ExecContext(ctx, setDepartmentVenue, arg.VenueID, arg.DepartmentID, arg.UniversityID)
+	return err
+}
+
+const setFacultyVenue = `-- name: SetFacultyVenue :exec
+INSERT INTO faculty_venues(
+    venue_id,
+    faculty_id,
+    university_id
+)VALUES(
+    $1,$2,$3
+)
+`
+
+type SetFacultyVenueParams struct {
+	VenueID      uuid.UUID
+	FacultyID    uuid.UUID
+	UniversityID uuid.UUID
+}
+
+func (q *Queries) SetFacultyVenue(ctx context.Context, arg SetFacultyVenueParams) error {
+	_, err := q.db.ExecContext(ctx, setFacultyVenue, arg.VenueID, arg.FacultyID, arg.UniversityID)
+	return err
+}
+
+const setStudentCourse = `-- name: SetStudentCourse :one
+INSERT INTO student_courses_offered(
+    student_id,
+    course_id
+)VALUES(
+    $1,$2
+)
+RETURNING student_id, course_id, created_at, updated_at
+`
+
+type SetStudentCourseParams struct {
+	StudentID uuid.UUID
+	CourseID  uuid.UUID
+}
+
+func (q *Queries) SetStudentCourse(ctx context.Context, arg SetStudentCourseParams) (StudentCoursesOffered, error) {
+	row := q.db.QueryRowContext(ctx, setStudentCourse, arg.StudentID, arg.CourseID)
+	var i StudentCoursesOffered
+	err := row.Scan(
+		&i.StudentID,
+		&i.CourseID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const updateAdminInfo = `-- name: UpdateAdminInfo :one
 UPDATE university_admin
 SET admin_middle_name = $1, admin_phone_number = $2, admin_staff_card = $3, admin_number = $4, university_id = $5
@@ -1019,6 +1540,90 @@ func (q *Queries) UpdateAdminInfo(ctx context.Context, arg UpdateAdminInfoParams
 		&i.AdminStaffCard,
 		&i.AdminNumber,
 		&i.UniversityID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateCourse = `-- name: UpdateCourse :one
+UPDATE courses
+SET
+    course_code = $1,
+    course_title = $2,
+    course_credit_unit = $3,
+    course_duration = $4,
+    sessions_per_week = $5,
+    lecturer_id =$6,
+    level = $7,
+    semester = $8
+WHERE course_id = $9
+RETURNING course_id, course_code, course_title, course_credit_unit, course_duration, department_id, university_id, lecturer_id, sessions_per_week, level, semester, created_at, updated_at
+`
+
+type UpdateCourseParams struct {
+	CourseCode       string
+	CourseTitle      string
+	CourseCreditUnit int32
+	CourseDuration   int32
+	SessionsPerWeek  int32
+	LecturerID       uuid.NullUUID
+	Level            int32
+	Semester         string
+	CourseID         uuid.UUID
+}
+
+func (q *Queries) UpdateCourse(ctx context.Context, arg UpdateCourseParams) (Course, error) {
+	row := q.db.QueryRowContext(ctx, updateCourse,
+		arg.CourseCode,
+		arg.CourseTitle,
+		arg.CourseCreditUnit,
+		arg.CourseDuration,
+		arg.SessionsPerWeek,
+		arg.LecturerID,
+		arg.Level,
+		arg.Semester,
+		arg.CourseID,
+	)
+	var i Course
+	err := row.Scan(
+		&i.CourseID,
+		&i.CourseCode,
+		&i.CourseTitle,
+		&i.CourseCreditUnit,
+		&i.CourseDuration,
+		&i.DepartmentID,
+		&i.UniversityID,
+		&i.LecturerID,
+		&i.SessionsPerWeek,
+		&i.Level,
+		&i.Semester,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateCourseLecturers = `-- name: UpdateCourseLecturers :one
+UPDATE courses_lecturers
+SET 
+    lecturer_id = $1
+WHERE course_id = $2 AND lecturer_id = $3
+RETURNING course_id, lecturer_id, created_at, updated_at
+`
+
+type UpdateCourseLecturersParams struct {
+	LecturerID   uuid.UUID
+	CourseID     uuid.UUID
+	LecturerID_2 uuid.UUID
+}
+
+func (q *Queries) UpdateCourseLecturers(ctx context.Context, arg UpdateCourseLecturersParams) (CoursesLecturer, error) {
+	row := q.db.QueryRowContext(ctx, updateCourseLecturers, arg.LecturerID, arg.CourseID, arg.LecturerID_2)
+	var i CoursesLecturer
+	err := row.Scan(
+		&i.CourseID,
+		&i.LecturerID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

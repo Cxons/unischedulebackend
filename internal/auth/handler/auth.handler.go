@@ -6,7 +6,7 @@ import (
 	"time"
 
 	// "database/sql"
-	"encoding/json"
+
 	"log/slog"
 	"net/http"
 
@@ -17,7 +17,6 @@ import (
 	"github.com/Cxons/unischedulebackend/internal/shared/db/queries"
 	"github.com/Cxons/unischedulebackend/internal/shared/utils"
 	status "github.com/Cxons/unischedulebackend/pkg/statuscodes"
-	"github.com/Cxons/unischedulebackend/pkg/validator"
 )
 
 type AuthHandlerInterface interface {
@@ -66,14 +65,7 @@ func NewAuthHandler(service service.AuthService)*AuthHandler{
 
 func (h *AuthHandler) Register(res http.ResponseWriter, req *http.Request){
 	var body service.RegisterDto;
-	if err:= json.NewDecoder(req.Body).Decode(&body); err!=nil{
-		http.Error(res,"Invalid Request Body",status.BadRequest.Code)
-		return
-	}
-	if err := validator.ValidateStruct(body); err!= nil{
-		http.Error(res,"Validation Error: " + err.Error(),status.BadRequest.Code)
-		return
-	}
+	utils.HandleBodyParsing(req,res,body)
 	// ctx := context.Background()
 	 resp,errMsg,err := h.service.Register(ctx,body)
 	 utils.HandleAuthResponse(resp,err,errMsg,res)
@@ -83,18 +75,7 @@ func (h *AuthHandler) Register(res http.ResponseWriter, req *http.Request){
 func (h *AuthHandler) Login(res http.ResponseWriter, req *http.Request){
      var body service.LoginDto;
 	 
-	 // parses json from request body into body struct
-	 if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-		http.Error(res,"Invalid Request Body",status.BadRequest.Code)
-		return
-	 }
-
-	 // implement predefined validations for request body
-	 if err := validator.ValidateStruct(body); err!= nil{
-		http.Error(res,"Validation Error: " + err.Error(),status.BadRequest.Code)
-		return
-	}
-
+	 utils.HandleBodyParsing(req,res,body)
 	// passes data into service layer for handling
 	resp,errMsg,err:= h.service.Login(ctx,body)
 
@@ -112,41 +93,32 @@ func (h *AuthHandler) Login(res http.ResponseWriter, req *http.Request){
 	}
 		http.SetCookie(res,cookie)
 	}
+	modifiedResp := service.AuthResponse{
+		Message: resp.Message,
+		Data: dto.LoginResponseData{
+		AccessToken: resp.Data.(dto.LoginResponseData).RefreshToken,
+	},
+	StatusCode: resp.StatusCode,
+	StatusCodeMessage: resp.StatusCodeMessage,
+	}
 	
 
 	// return appropriate response message to user
-	utils.HandleAuthResponse(resp,err,errMsg,res)
+	utils.HandleAuthResponse(modifiedResp,err,errMsg,res)
 	
 }
 
 func (h *AuthHandler) SendOtp(res http.ResponseWriter,req *http.Request){
 	var body dto.SendOtpDto
 	 
-	 // parses json from request body into body struct
-	if err:= json.NewDecoder(req.Body).Decode(&body); err != nil{
-		http.Error(res,"Invalid Request Body",status.BadRequest.Code)
-		return
-	}
-	// implement predefined validations for request body
-	 if err := validator.ValidateStruct(body); err!= nil{
-		http.Error(res,"Validation Error: " + err.Error(),status.BadRequest.Code)
-		return
-	}
+	utils.HandleBodyParsing(req,res,body)
 	 resp,errMsg,err := h.service.SendOtp(ctx,body.Email,body.UserType)
 	 utils.HandleAuthResponse(resp,err,errMsg,res)
 }
 
 func (h *AuthHandler) VerifyOtp(res http.ResponseWriter, req *http.Request){
 	var body dto.VerifyOtpDto
-		if err:= json.NewDecoder(req.Body).Decode(&body); err != nil{
-		http.Error(res,"Invalid Request Body",status.BadRequest.Code)
-		return
-	}
-	// implement predefined validations for request body
-	 if err := validator.ValidateStruct(body); err!= nil{
-		http.Error(res,"Validation Error: " + err.Error(),status.BadRequest.Code)
-		return
-	}
+	utils.HandleBodyParsing(req,res,body)
 	 resp,errMsg,err := h.service.VerifyOtp(ctx,body.Email,body.Otp)
 	 utils.HandleAuthResponse(resp,err,errMsg,res)
 }

@@ -1,0 +1,1 @@
+DROP TABLE lecturer_unavailability;

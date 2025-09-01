@@ -4,6 +4,7 @@ import (
 	"context"
 
 	sqlc "github.com/Cxons/unischedulebackend/internal/shared/db"
+	"github.com/google/uuid"
 )
 
 
@@ -26,4 +27,8 @@ func (lq *LecturerQueries) RetrieveLecturerEmail(ctx context.Context, email stri
 
 func (lq *LecturerQueries) RequestLecturerConfirmation(ctx context.Context, lecturer sqlc.RequestLecturerConfirmationParams)(sqlc.LecturerWaitingList,error){
 	return lq.q.RequestLecturerConfirmation(ctx,lecturer)
+}
+
+func (lq *LecturerQueries) CheckLecturerConfirmation(ctx context.Context,waitId uuid.UUID)(sqlc.CheckLecturerConfirmationRow,error){
+	return lq.q.CheckLecturerConfirmation(ctx,waitId)
 }

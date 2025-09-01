@@ -64,3 +64,38 @@ RETURNING *;
 -- name: RetrieveDeptsForAFaculty :many
 SELECT * FROM departments
 WHERE faculty_id = $1 AND university_id = $2;
+
+
+-- name: CreateVenue :one
+INSERT INTO venues(
+    venue_name,
+    venue_longitude,
+    venue_latitude,
+    location,
+    venue_image,
+    capacity,
+    university_id
+)VALUES(
+    $1,$2,$3,$4,$5,$6,$7
+)
+RETURNING *;
+
+-- name: SetFacultyVenue :exec
+INSERT INTO faculty_venues(
+    venue_id,
+    faculty_id,
+    university_id
+)VALUES(
+    $1,$2,$3
+);
+
+-- name: SetDepartmentVenue :exec
+INSERT INTO dept_venues(
+    venue_id,
+    department_id,
+    university_id
+)
+VALUES(
+    $1,$2,$3
+);
+

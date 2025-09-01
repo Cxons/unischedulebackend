@@ -1,0 +1,1 @@
+DROP TABLE courses_possible_venues;

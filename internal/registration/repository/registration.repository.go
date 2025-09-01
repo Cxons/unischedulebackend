@@ -16,14 +16,24 @@ type RegRepository interface{
 	UpdateAdmin(ctx context.Context,adminInfo sqlc.UpdateAdminInfoParams)(bool,sqlc.UniversityAdmin,error)
 	CreateUniversity(ctx context.Context, uniInfo sqlc.CreateUniversityParams)(sqlc.University,error)
 	RetrievePendingDeans(ctx context.Context, uniId uuid.UUID)([]sqlc.DeanWaitingList,error)
-	ApproveDean(ctx context.Context,waitId uuid.UUID)(sqlc.DeanWaitingList,error)
+	ApproveDean(ctx context.Context,waitId uuid.UUID)(bool,sqlc.DeanWaitingList,error)
 	RetrievePendingHods(ctx context.Context, deanInfo sqlc.RetrievePendingHodsParams)([]sqlc.HodWaitingList,error)
-	ApproveHod(ctx context.Context, waitId uuid.UUID)(sqlc.HodWaitingList,error)
+	ApproveHod(ctx context.Context, waitId uuid.UUID)(bool,sqlc.HodWaitingList,error)
 	RetrievePendingLecturers(ctx context.Context, hodInfo sqlc.RetrievePendingLecturersParams)([]sqlc.LecturerWaitingList,error)
-	ApproveLecturer(ctx context.Context, waitId uuid.UUID)(sqlc.LecturerWaitingList,error)
+	ApproveLecturer(ctx context.Context, waitId uuid.UUID)(bool,sqlc.LecturerWaitingList,error)
 	RequestDeanConfirmation(ctx context.Context, dean sqlc.RequestDeanConfirmationParams)(sqlc.DeanWaitingList,error)
 	RequestHodConfirmation(ctx context.Context, hod sqlc.RequestHodConfirmationParams)(sqlc.HodWaitingList,error)
 	RequestLecturerConfirmation(ctx context.Context, lecturer sqlc.RequestLecturerConfirmationParams)(sqlc.LecturerWaitingList,error)
+	CheckDeanConfirmation(ctx context.Context,waitId uuid.UUID)(sqlc.CheckDeanConfirmationRow,error)
+	CheckHodConfirmation(ctx context.Context, waitId uuid.UUID)(sqlc.CheckHodConfirmationRow,error)
+	CheckLecturerConfirmation(ctx context.Context, waitId uuid.UUID)(sqlc.CheckLecturerConfirmationRow,error)
+	CreateFaculty(ctx context.Context, facInfo sqlc.CreateFacultyParams)(sqlc.Faculty,error)
+	CreateDepartment(ctx context.Context,deptInfo sqlc.CreateDepartmentParams)(sqlc.Department,error)
+	CreateDean(ctx context.Context, deanInfo sqlc.CreateDeanParams)(sqlc.CurrentDean,error)
+	CreateHod(ctx context.Context, hodInfo sqlc.CreateHodParams)(sqlc.CurrentHod,error)
+	RetrieveAdmin(ctx context.Context,adminId uuid.UUID)(bool,sqlc.RetrieveAdminRow,error)
+	RetrieveDean(ctx context.Context,deanId uuid.UUID)(bool,sqlc.RetrieveDeanRow,error)
+	RetrieveHod(ctx context.Context, hodId uuid.UUID)(bool,sqlc.RetrieveHodRow,error)
 }
 
 
@@ -34,10 +44,12 @@ type regRepository struct{
 	uq *queries.UniQueries
 	dq *queries.DeanQueries
 	hq *queries.HodQueries
+	fq *queries.FacQueries
+	dptq *queries.DeptQueries
 
 }
 
-func NewRegRepository(aq *queries.AdminQueries,sq *queries.StudentQueries, lq *queries.LecturerQueries, uq *queries.UniQueries, dq *queries.DeanQueries, hq *queries.HodQueries)*regRepository{
+func NewRegRepository(aq *queries.AdminQueries,sq *queries.StudentQueries, lq *queries.LecturerQueries, uq *queries.UniQueries, dq *queries.DeanQueries, hq *queries.HodQueries, fq *queries.FacQueries,dptq *queries.DeptQueries)*regRepository{
 	return &regRepository{
 		aq: aq,
 		sq: sq,
@@ -45,6 +57,8 @@ func NewRegRepository(aq *queries.AdminQueries,sq *queries.StudentQueries, lq *q
 		uq:uq,
 		dq:dq,
 		hq:hq,
+		fq:fq,
+		dptq:dptq,
 	}
 }
 
@@ -68,34 +82,118 @@ func (rrp *regRepository) RetrievePendingDeans(ctx context.Context,uniId uuid.UU
 	return rrp.aq.RetrievePendingDeans(ctx,uniId)
 }
 
-func (rrp *regRepository) ApproveDean(ctx context.Context,waitId uuid.UUID)(sqlc.DeanWaitingList,error){
-	return rrp.aq.ApproveDean(ctx,waitId)
+func (rrp *regRepository) ApproveDean(ctx context.Context,waitId uuid.UUID)(bool,sqlc.DeanWaitingList,error){
+	deanRow,err := rrp.aq.ApproveDean(ctx,waitId)
+	if err != nil {
+		if err == sql.ErrNoRows{
+		return false,sqlc.DeanWaitingList{},errors.New("wait id not found")
+	}
+	return true,sqlc.DeanWaitingList{},err
+	}
+	return true,deanRow,nil
 }
 
 func (rrp *regRepository)RequestDeanConfirmation(ctx context.Context, dean sqlc.RequestDeanConfirmationParams)(sqlc.DeanWaitingList,error){
 	return rrp.dq.RequestDeanConfirmation(ctx,dean)
 }
 
+func (rrp *regRepository) CheckDeanConfirmation(ctx context.Context,waitId uuid.UUID)(sqlc.CheckDeanConfirmationRow,error){
+	return rrp.dq.CheckDeanConfirmation(ctx,waitId)
+}
+
+func (rrp *regRepository) CreateFaculty(ctx context.Context, facInfo sqlc.CreateFacultyParams)(sqlc.Faculty,error){
+	return rrp.fq.CreateFaculty(ctx,facInfo)
+}
+
 func (rrp *regRepository) RetrievePendingHods(ctx context.Context,deanInfo sqlc.RetrievePendingHodsParams)([]sqlc.HodWaitingList,error){
 	return rrp.dq.RetrievePendingHods(ctx,deanInfo)
 }
 
-func (rrp *regRepository) ApproveHod(ctx context.Context, waitId uuid.UUID)(sqlc.HodWaitingList,error){
-	return rrp.dq.ApproveHod(ctx,waitId)
+func (rrp *regRepository) ApproveHod(ctx context.Context, waitId uuid.UUID)(bool,sqlc.HodWaitingList,error){
+	hodRow,err := rrp.dq.ApproveHod(ctx,waitId)
+	if err != nil {
+		if err == sql.ErrNoRows{
+		return false,sqlc.HodWaitingList{},errors.New("wait id not found")
+	}
+	return true,sqlc.HodWaitingList{},err
+	}
+	return true,hodRow,nil
+
 }
 
 func (rrp *regRepository) RequestHodConfirmation(ctx context.Context, hod sqlc.RequestHodConfirmationParams)(sqlc.HodWaitingList,error){
 	return rrp.hq.RequestHodConfirmation(ctx,hod)
 }
 
+func (rrp *regRepository) CheckHodConfirmation(ctx context.Context, waitId uuid.UUID)(sqlc.CheckHodConfirmationRow,error){
+	return rrp.hq.CheckHodConfirmation(ctx,waitId)
+} 
+
+func (rrp *regRepository) CreateDepartment(ctx context.Context,deptInfo sqlc.CreateDepartmentParams)(sqlc.Department,error){
+	return rrp.dptq.CreateDeparment(ctx,deptInfo)
+}
+
 func (rrp *regRepository) RetrievePendingLecturers(ctx context.Context, hodInfo sqlc.RetrievePendingLecturersParams)([]sqlc.LecturerWaitingList,error){
 	return rrp.hq.RetrievePendingLecturers(ctx,hodInfo)
 }
 
-func (rrp *regRepository) ApproveLecturer(ctx context.Context, waitId uuid.UUID)(sqlc.LecturerWaitingList,error){
-	return rrp.hq.ApproveLecturer(ctx,waitId)
+func (rrp *regRepository) ApproveLecturer(ctx context.Context, waitId uuid.UUID)(bool,sqlc.LecturerWaitingList,error){
+	lecturerRow,err := rrp.hq.ApproveLecturer(ctx,waitId)
+	if err != nil {
+		if err == sql.ErrNoRows{
+		return false,sqlc.LecturerWaitingList{},errors.New("wait id not found")
+	}
+	return true,sqlc.LecturerWaitingList{},err
+	}
+	return true,lecturerRow,nil
 }
 
 func (rrp *regRepository) RequestLecturerConfirmation(ctx context.Context, lecturer sqlc.RequestLecturerConfirmationParams)(sqlc.LecturerWaitingList,error){
 	return rrp.lq.RequestLecturerConfirmation(ctx,lecturer)
+}
+
+func (rrp *regRepository) CheckLecturerConfirmation(ctx context.Context, waitId uuid.UUID)(sqlc.CheckLecturerConfirmationRow,error){
+	return rrp.lq.CheckLecturerConfirmation(ctx,waitId)
+}
+
+func (rrp *regRepository) CreateDean(ctx context.Context, deanInfo sqlc.CreateDeanParams)(sqlc.CurrentDean,error){
+	return rrp.dq.CreateDean(ctx,deanInfo)
+}
+
+func (rrp *regRepository) CreateHod(ctx context.Context, hodInfo sqlc.CreateHodParams)(sqlc.CurrentHod,error){
+	return rrp.hq.CreateHod(ctx,hodInfo)
+}
+
+func (rrp *regRepository) RetrieveAdmin(ctx context.Context,adminId uuid.UUID)(bool,sqlc.RetrieveAdminRow,error){
+	admin,err := rrp.aq.RetrieveAdmin(ctx,adminId)
+	if err != nil{
+		if err == sql.ErrNoRows{
+			return false,sqlc.RetrieveAdminRow{},nil
+		}
+		return true,sqlc.RetrieveAdminRow{},err
+	}
+	return true,admin,nil
+}
+
+func (rrp *regRepository) RetrieveDean(ctx context.Context,deanId uuid.UUID)(bool,sqlc.RetrieveDeanRow,error){
+	dean,err := rrp.dq.RetrieveDean(ctx,deanId)
+	if err != nil{
+		if err == sql.ErrNoRows{
+			return false,sqlc.RetrieveDeanRow{},nil
+		}
+		return true,sqlc.RetrieveDeanRow{},err
+	}
+	return true,dean,nil
+}
+
+func (rrp *regRepository) RetrieveHod(ctx context.Context, hodId uuid.UUID)(bool,sqlc.RetrieveHodRow,error){
+	hod,err := rrp.hq.RetrieveHod(ctx,hodId)
+	if err != nil{
+		if err == sql.ErrNoRows{
+			return false,sqlc.RetrieveHodRow{},nil
+		}
+		return true,sqlc.RetrieveHodRow{},err
+	}
+	return true,hod,nil
+	
 }

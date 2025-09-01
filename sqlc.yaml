@@ -5,11 +5,12 @@ sql:
       - "./internal/registration/db/schema.sql"
       - "./internal/auth/db/schema.sql"
       - "./internal/university/db/schema.sql"
+      - "./internal/courses/db/schema.sql"
     queries:
       - "./internal/registration/db/queries.sql"
       - "./internal/auth/db/queries.sql"
       - "./internal/university/db/queries.sql"
-
+      - "./internal/courses/db/queries.sql"
     gen:
       go:
         package: "db"

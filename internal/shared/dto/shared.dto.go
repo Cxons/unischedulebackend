@@ -8,3 +8,7 @@ type ResponseDto struct {
 	StatusCode int
 	StatusCodeMessage string
 }
+
+type UserContext struct {
+	Value string
+}

@@ -11,6 +11,7 @@ import (
 
 	authDto "github.com/Cxons/unischedulebackend/internal/auth/dto"
 	repo "github.com/Cxons/unischedulebackend/internal/auth/repository"
+	"github.com/Cxons/unischedulebackend/internal/shared/constants"
 	sqlc "github.com/Cxons/unischedulebackend/internal/shared/db"
 	sharedDto "github.com/Cxons/unischedulebackend/internal/shared/dto"
 	"github.com/Cxons/unischedulebackend/pkg/auth/jwt"
@@ -25,6 +26,11 @@ type LoginDto = authDto.LoginDto
 type RegisterDto = authDto.RegisterDto
 type LoginResponseData = authDto.LoginResponseData
 type RefreshAccessTokenData = authDto.RefreshAccessTokenData
+var STUDENT = constants.STUDENT
+var ADMIN = constants.ADMIN
+var LECTURER = constants.LECTURER
+var ACCESS_TOKEN = constants.ACCESS_TOKEN
+var REFRESH_TOKEN = constants.REFRESH_TOKEN
 
 type AuthService interface{
  	Register(ctx context.Context,user RegisterDto)(AuthResponse,string,error)
@@ -58,7 +64,7 @@ func (s *authService) Register(ctx context.Context,user RegisterDto)(AuthRespons
 	}
 
 	switch user.Role {
-	case "student":
+	case STUDENT:
 		student,err := s.repo.RegisterStudent(ctx, sqlc.RegisterStudentParams{
 			StudentFirstName: user.FirstName,
 			StudentLastName: user.LastName,
@@ -77,7 +83,7 @@ func (s *authService) Register(ctx context.Context,user RegisterDto)(AuthRespons
 			Message: "Thanks for registering " + student.StudentFirstName,
 		},"",nil
 
-	case "lecturer":
+	case LECTURER:
 		lecturer,err := s.repo.RegisterLecturer(ctx,sqlc.RegisterLecturerParams{
 			LecturerFirstName: user.FirstName,
 			LecturerLastName: user.LastName,
@@ -96,7 +102,7 @@ func (s *authService) Register(ctx context.Context,user RegisterDto)(AuthRespons
 			Message: "Thanks for registering " + lecturer.LecturerFirstName,
 		},"",nil
 
-	case "admin":
+	case ADMIN:
 		admin,err := s.repo.RegisterUniversityAdmin(ctx,sqlc.RegisterUniversityAdminParams{
 			AdminFirstName: user.FirstName,
 			AdminLastName: user.LastName,
@@ -133,13 +139,13 @@ func (s *authService) Login(ctx context.Context, user LoginDto)(AuthResponse,str
 			return AuthResponse{},status.InternalServerError.Message,err
 		}
 	switch user.Role{
-	case "student": 
+	case STUDENT: 
 		userId = userData.(sqlc.RetrieveStudentEmailRow).StudentID
 		password = userData.(sqlc.RetrieveStudentEmailRow).StudentPassword
-	case "lecturer":
+	case LECTURER:
 		userId = userData.(sqlc.RetrieveLecturerEmailRow).LecturerID
 		password = userData.(sqlc.RetrieveLecturerEmailRow).LecturerPassword
-	case "admin":
+	case ADMIN:
 		userId = userData.(sqlc.RetrieveAdminEmailRow).AdminID
 		password = userData.(sqlc.RetrieveAdminEmailRow).AdminPassword
 	}
@@ -148,7 +154,7 @@ func (s *authService) Login(ctx context.Context, user LoginDto)(AuthResponse,str
 			s.logger.Error("Error verifying user email and password","err:",err)
 			return AuthResponse{},status.Unauthorized.Message,err
 		}
-	refreshToken,err = s.manageLoginRefreshToken(ctx,userId,user.Email,user.Role,"refresh_token")
+	refreshToken,err = s.manageLoginRefreshToken(ctx,userId,user.Email,user.Role,REFRESH_TOKEN)
 	if err != nil {
 		s.logger.Error("Error managing login refresh tokens","err:",err)
 		return AuthResponse{},status.InternalServerError.Message,err
@@ -172,11 +178,11 @@ func (s *authService) Login(ctx context.Context, user LoginDto)(AuthResponse,str
 
 func (s *authService) retrieveUserEmail(ctx context.Context, role string, email string)(bool,interface{},error){
 	switch role {
-	case "student":
+	case STUDENT:
 		return s.repo.RetrieveStudentEmail(ctx,email)
-	case "lecturer":
+	case LECTURER:
 		return s.repo.RetrieveLecturerEmail(ctx,email)
-	case "admin":
+	case ADMIN:
 		return s.repo.RetrieveAdminEmail(ctx,email)
 	default:
 		return false,nil,errors.New("role type not allowed")
@@ -237,7 +243,7 @@ func (s *authService) manageLoginRefreshToken(ctx context.Context,userId uuid.UU
 }
 
 func (s *authService) createAccessToken(userId string,email string,role string)(string,error){
-token,_,err :=jwt.GenerateToken(userId,email,role,"access_token")
+token,_,err :=jwt.GenerateToken(userId,email,role,ACCESS_TOKEN)
 			if err != nil {
 				s.logger.Error("Error generating refresh token","err:",err)
 				return "",err

@@ -6,10 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Cxons/unischedulebackend/internal/auth/dto"
+	"github.com/Cxons/unischedulebackend/internal/shared/constants"
 	"github.com/Cxons/unischedulebackend/pkg/auth/jwt"
 )
-type userContext dto.UserContext;
 
 
 func JwtMiddleware()func(http.Handler)http.Handler{
@@ -29,8 +28,8 @@ func JwtMiddleware()func(http.Handler)http.Handler{
 				http.Error(w,"Invalid or expired token",http.StatusUnauthorized)
 				return
 			 }
-			 ctxKey := &userContext{Value: "UserInfo"}
-			 ctx := context.WithValue(r.Context(),ctxKey,claims)
+			//  ctxKey := &userContext{Value: "UserInfo"}
+			 ctx := context.WithValue(r.Context(),constants.UserInfoKey,claims)
 			 next.ServeHTTP(w,r.WithContext(ctx))
 		})
 	}
