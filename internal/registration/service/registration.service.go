@@ -347,7 +347,7 @@ func (rs *RegServiceStruct) CreateDepartment(ctx context.Context, deptInfo Creat
 		DepartmentCode: utils.StringToNullString(deptInfo.DepartmentCode),
 		UniversityID: utils.StringToUUID(deptInfo.UniversityId),
 		FacultyID: utils.StringToUUID(deptInfo.FacultyId),
-		
+		NumberOfLevels: int32(deptInfo.NumberOfLevels),
 	}
 
 	uni,err := rs.regRepo.CreateDepartment(ctx,department)

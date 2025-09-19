@@ -32,6 +32,7 @@ type CreateDepartmentDto struct {
 	DepartmentCode string `json:"departmentCode" validate:"required"`
 	UniversityId string `json:"universityId" validate:"required"`
 	FacultyId string `json:"facultyId" validate:"required"`
+	NumberOfLevels int `json:"numberOfLevels" validate:"required"`
 }
 
 type RequestDeanConfirmationDto struct {

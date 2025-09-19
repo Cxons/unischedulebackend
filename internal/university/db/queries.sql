@@ -47,9 +47,9 @@ WHERE university_id = $1;
 
 -- name: CreateDepartment :one
 INSERT INTO departments(
-    department_name,department_code,faculty_id,university_id
+    department_name,department_code,faculty_id,university_id,number_of_levels
 )VALUES(
-    $1,$2,$3,$4
+    $1,$2,$3,$4,$5
 )
 RETURNING *;
 
@@ -57,9 +57,36 @@ RETURNING *;
 UPDATE departments
 SET 
     department_name = $1,
-    department_code = $2
+    department_code = $2,
+    number_of_levels = $3
 WHERE department_id = $3
 RETURNING *;
+
+-- name: CreateCohort :one
+INSERT INTO cohorts(cohort_name,
+    cohort_level,
+    cohort_department_id,
+    cohort_faculty_id,
+    cohort_university_id
+)VALUES(
+    $1,$2,$3,$4,$5
+)
+RETURNING *;
+
+-- name: UpdateCohort :one
+UPDATE cohorts
+SET
+    cohort_level = $1,
+    cohort_department_id = $2,
+    cohort_faculty_id = $3,
+    cohort_university_id = $4
+WHERE cohort_id = $5
+RETURNING *;
+
+-- name: RetrieveAllCohorts :many
+SELECT * FROM cohorts
+WHERE cohort_university_id = $1;
+
 
 -- name: RetrieveDeptsForAFaculty :many
 SELECT * FROM departments

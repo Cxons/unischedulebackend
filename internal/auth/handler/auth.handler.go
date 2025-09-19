@@ -57,6 +57,7 @@ func NewAuthPackage(logger *slog.Logger, db *sql.DB)*AuthHandler{
 	return handler
 
 }
+
 func NewAuthHandler(service service.AuthService)*AuthHandler{
 	return &AuthHandler{
 		service: service,
