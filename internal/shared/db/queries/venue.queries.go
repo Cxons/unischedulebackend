@@ -4,6 +4,7 @@ import (
 	"context"
 
 	sqlc "github.com/Cxons/unischedulebackend/internal/shared/db"
+	"github.com/google/uuid"
 )
 
 
@@ -35,4 +36,8 @@ func (vq *VenueQueries) SetFacultyVenue(ctx context.Context, param sqlc.SetFacul
 
 func (vq *VenueQueries) SetDepartmentVenue(ctx context.Context, param sqlc.SetDepartmentVenueParams)error{
 	return vq.q.SetDepartmentVenue(ctx,param)
+}
+
+func (vq *VenueQueries) RetrieveTotalVenueUnavailability(ctx context.Context,universityId uuid.UUID)([]sqlc.RetrieveTotalVenueUnavailabilityRow,error){
+	return vq.q.RetrieveTotalVenueUnavailability(ctx,universityId)
 }

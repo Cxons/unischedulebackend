@@ -255,6 +255,134 @@ func (q *Queries) CheckLecturerConfirmation(ctx context.Context, waitID uuid.UUI
 	return i, err
 }
 
+const countCohortsForOneUni = `-- name: CountCohortsForOneUni :one
+SELECT COUNT(*) FROM cohorts
+WHERE cohort_university_id = $1
+`
+
+func (q *Queries) CountCohortsForOneUni(ctx context.Context, cohortUniversityID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countCohortsForOneUni, cohortUniversityID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countDepartmentLecturers = `-- name: CountDepartmentLecturers :one
+SELECT COUNT(*) FROM lecturers
+WHERE lecturer_university_id = $1 AND lecturer_department_id = $2
+`
+
+type CountDepartmentLecturersParams struct {
+	LecturerUniversityID uuid.NullUUID
+	LecturerDepartmentID uuid.NullUUID
+}
+
+func (q *Queries) CountDepartmentLecturers(ctx context.Context, arg CountDepartmentLecturersParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countDepartmentLecturers, arg.LecturerUniversityID, arg.LecturerDepartmentID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countFacultyLecturers = `-- name: CountFacultyLecturers :one
+SELECT COUNT(*) FROM lecturers 
+WHERE lecturer_university_id = $1 AND lecturer_faculty_id = $2
+`
+
+type CountFacultyLecturersParams struct {
+	LecturerUniversityID uuid.NullUUID
+	LecturerFacultyID    uuid.NullUUID
+}
+
+func (q *Queries) CountFacultyLecturers(ctx context.Context, arg CountFacultyLecturersParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countFacultyLecturers, arg.LecturerUniversityID, arg.LecturerFacultyID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countTotalCohorts = `-- name: CountTotalCohorts :one
+SELECT COUNT(*) FROM cohorts
+WHERE cohort_university_id = $1
+`
+
+func (q *Queries) CountTotalCohorts(ctx context.Context, cohortUniversityID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countTotalCohorts, cohortUniversityID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countTotalCourses = `-- name: CountTotalCourses :one
+SELECT COUNT(*) FROM courses
+WHERE university_id = $1
+`
+
+func (q *Queries) CountTotalCourses(ctx context.Context, universityID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countTotalCourses, universityID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countTotalLecturers = `-- name: CountTotalLecturers :one
+SELECT COUNT(*) FROM lecturers
+WHERE lecturer_university_id = $1
+`
+
+func (q *Queries) CountTotalLecturers(ctx context.Context, lecturerUniversityID uuid.NullUUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countTotalLecturers, lecturerUniversityID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countVenuesForDepartment = `-- name: CountVenuesForDepartment :one
+SELECT COUNT(*) FROM dept_venues
+WHERE university_id = $1 AND department_id = $2
+`
+
+type CountVenuesForDepartmentParams struct {
+	UniversityID uuid.UUID
+	DepartmentID uuid.UUID
+}
+
+func (q *Queries) CountVenuesForDepartment(ctx context.Context, arg CountVenuesForDepartmentParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countVenuesForDepartment, arg.UniversityID, arg.DepartmentID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countVenuesForUni = `-- name: CountVenuesForUni :one
+SELECT COUNT(*) FROM venues 
+WHERE university_id = $1
+`
+
+func (q *Queries) CountVenuesForUni(ctx context.Context, universityID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countVenuesForUni, universityID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countVenuesforFaculty = `-- name: CountVenuesforFaculty :one
+SELECT COUNT(*) FROM faculty_venues
+WHERE university_id = $1 AND faculty_id = $2
+`
+
+type CountVenuesforFacultyParams struct {
+	UniversityID uuid.UUID
+	FacultyID    uuid.UUID
+}
+
+func (q *Queries) CountVenuesforFaculty(ctx context.Context, arg CountVenuesforFacultyParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countVenuesforFaculty, arg.UniversityID, arg.FacultyID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createCohort = `-- name: CreateCohort :one
 INSERT INTO cohorts(cohort_name,
     cohort_level,
@@ -1272,6 +1400,124 @@ func (q *Queries) RetrieveLecturerEmail(ctx context.Context, lecturerEmail strin
 	return i, err
 }
 
+const retrieveLecturersForDepartment = `-- name: RetrieveLecturersForDepartment :many
+SELECT 
+    lecturer_id,
+    lecturer_first_name,
+    lecturer_last_name,
+    lecturer_middle_name,
+    lecturer_email,
+    lecturer_profile_pic
+FROM lecturers
+WHERE 
+    lecturer_university_id = $1 
+    AND 
+    lecturer_faculty_id = $2 
+    AND
+    lecturer_department_id = $3
+`
+
+type RetrieveLecturersForDepartmentParams struct {
+	LecturerUniversityID uuid.NullUUID
+	LecturerFacultyID    uuid.NullUUID
+	LecturerDepartmentID uuid.NullUUID
+}
+
+type RetrieveLecturersForDepartmentRow struct {
+	LecturerID         uuid.UUID
+	LecturerFirstName  string
+	LecturerLastName   string
+	LecturerMiddleName sql.NullString
+	LecturerEmail      string
+	LecturerProfilePic sql.NullString
+}
+
+func (q *Queries) RetrieveLecturersForDepartment(ctx context.Context, arg RetrieveLecturersForDepartmentParams) ([]RetrieveLecturersForDepartmentRow, error) {
+	rows, err := q.db.QueryContext(ctx, retrieveLecturersForDepartment, arg.LecturerUniversityID, arg.LecturerFacultyID, arg.LecturerDepartmentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RetrieveLecturersForDepartmentRow
+	for rows.Next() {
+		var i RetrieveLecturersForDepartmentRow
+		if err := rows.Scan(
+			&i.LecturerID,
+			&i.LecturerFirstName,
+			&i.LecturerLastName,
+			&i.LecturerMiddleName,
+			&i.LecturerEmail,
+			&i.LecturerProfilePic,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const retrieveLecturersForFaculty = `-- name: RetrieveLecturersForFaculty :many
+SELECT 
+    lecturer_id,
+    lecturer_first_name,
+    lecturer_last_name,
+    lecturer_middle_name,
+    lecturer_email,
+    lecturer_profile_pic
+FROM lecturers
+WHERE lecturer_university_id = $1 AND lecturer_faculty_id = $2
+`
+
+type RetrieveLecturersForFacultyParams struct {
+	LecturerUniversityID uuid.NullUUID
+	LecturerFacultyID    uuid.NullUUID
+}
+
+type RetrieveLecturersForFacultyRow struct {
+	LecturerID         uuid.UUID
+	LecturerFirstName  string
+	LecturerLastName   string
+	LecturerMiddleName sql.NullString
+	LecturerEmail      string
+	LecturerProfilePic sql.NullString
+}
+
+func (q *Queries) RetrieveLecturersForFaculty(ctx context.Context, arg RetrieveLecturersForFacultyParams) ([]RetrieveLecturersForFacultyRow, error) {
+	rows, err := q.db.QueryContext(ctx, retrieveLecturersForFaculty, arg.LecturerUniversityID, arg.LecturerFacultyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RetrieveLecturersForFacultyRow
+	for rows.Next() {
+		var i RetrieveLecturersForFacultyRow
+		if err := rows.Scan(
+			&i.LecturerID,
+			&i.LecturerFirstName,
+			&i.LecturerLastName,
+			&i.LecturerMiddleName,
+			&i.LecturerEmail,
+			&i.LecturerProfilePic,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const retrieveOtp = `-- name: RetrieveOtp :one
 SELECT otp,expires_at FROM otps WHERE email = $1
 `
@@ -1429,6 +1675,157 @@ func (q *Queries) RetrieveStudentEmail(ctx context.Context, studentEmail string)
 	return i, err
 }
 
+const retrieveTotalLecturerUnavailability = `-- name: RetrieveTotalLecturerUnavailability :many
+SELECT 
+    l.lecturer_id,
+    lu.day,
+    lu.start_time,
+    lu.end_time,
+    lu.reason
+FROM lecturers l
+INNER JOIN lecturer_unavailability lu
+ON l.lecturer_id = lu.lecturer_id
+WHERE l.lecturer_university_id = $1
+`
+
+type RetrieveTotalLecturerUnavailabilityRow struct {
+	LecturerID uuid.UUID
+	Day        string
+	StartTime  time.Time
+	EndTime    time.Time
+	Reason     sql.NullString
+}
+
+func (q *Queries) RetrieveTotalLecturerUnavailability(ctx context.Context, lecturerUniversityID uuid.NullUUID) ([]RetrieveTotalLecturerUnavailabilityRow, error) {
+	rows, err := q.db.QueryContext(ctx, retrieveTotalLecturerUnavailability, lecturerUniversityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RetrieveTotalLecturerUnavailabilityRow
+	for rows.Next() {
+		var i RetrieveTotalLecturerUnavailabilityRow
+		if err := rows.Scan(
+			&i.LecturerID,
+			&i.Day,
+			&i.StartTime,
+			&i.EndTime,
+			&i.Reason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const retrieveTotalLecturers = `-- name: RetrieveTotalLecturers :many
+SELECT 
+    lecturer_id,
+    lecturer_first_name,
+    lecturer_last_name,
+    lecturer_middle_name,
+    lecturer_email,
+    lecturer_profile_pic
+FROM lecturers
+WHERE lecturer_university_id = $1
+`
+
+type RetrieveTotalLecturersRow struct {
+	LecturerID         uuid.UUID
+	LecturerFirstName  string
+	LecturerLastName   string
+	LecturerMiddleName sql.NullString
+	LecturerEmail      string
+	LecturerProfilePic sql.NullString
+}
+
+func (q *Queries) RetrieveTotalLecturers(ctx context.Context, lecturerUniversityID uuid.NullUUID) ([]RetrieveTotalLecturersRow, error) {
+	rows, err := q.db.QueryContext(ctx, retrieveTotalLecturers, lecturerUniversityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RetrieveTotalLecturersRow
+	for rows.Next() {
+		var i RetrieveTotalLecturersRow
+		if err := rows.Scan(
+			&i.LecturerID,
+			&i.LecturerFirstName,
+			&i.LecturerLastName,
+			&i.LecturerMiddleName,
+			&i.LecturerEmail,
+			&i.LecturerProfilePic,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const retrieveTotalVenueUnavailability = `-- name: RetrieveTotalVenueUnavailability :many
+SELECT 
+    v.venue_id,
+    vu.reason,
+    vu.day,
+    vu.start_time,
+    vu.end_time
+FROM venues v
+INNER JOIN venue_unavailability vu
+ON v.venue_id = vu.venue_id
+WHERE v.university_id = $1
+`
+
+type RetrieveTotalVenueUnavailabilityRow struct {
+	VenueID   uuid.UUID
+	Reason    sql.NullString
+	Day       sql.NullString
+	StartTime sql.NullTime
+	EndTime   sql.NullTime
+}
+
+func (q *Queries) RetrieveTotalVenueUnavailability(ctx context.Context, universityID uuid.UUID) ([]RetrieveTotalVenueUnavailabilityRow, error) {
+	rows, err := q.db.QueryContext(ctx, retrieveTotalVenueUnavailability, universityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RetrieveTotalVenueUnavailabilityRow
+	for rows.Next() {
+		var i RetrieveTotalVenueUnavailabilityRow
+		if err := rows.Scan(
+			&i.VenueID,
+			&i.Reason,
+			&i.Day,
+			&i.StartTime,
+			&i.EndTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const retrieveUniversitiesWithLimit = `-- name: RetrieveUniversitiesWithLimit :many
 SELECT university_id, university_name, university_logo, university_abbr, email, website, phone_number, university_addr, current_session, created_at, updated_at FROM universities LIMIT $1
 `
@@ -1454,6 +1851,79 @@ func (q *Queries) RetrieveUniversitiesWithLimit(ctx context.Context, limit int32
 			&i.CurrentSession,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const retriveAllCoursesAndTheirVenueIds = `-- name: RetriveAllCoursesAndTheirVenueIds :many
+SELECT
+    c.course_id,
+    c.course_code,
+    c.course_title,
+    c.course_credit_unit,
+    c.course_duration,
+    c.department_id,
+    c.university_id,
+    c.lecturer_id,
+    c.sessions_per_week,
+    c.level,
+    c.semester,
+    cpv.venue_id
+FROM courses c
+INNER JOIN 
+    courses_possible_venues cpv 
+ON 
+    cpv.course_id = c.course_id
+WHERE c.university_id = $1
+`
+
+type RetriveAllCoursesAndTheirVenueIdsRow struct {
+	CourseID         uuid.UUID
+	CourseCode       string
+	CourseTitle      string
+	CourseCreditUnit int32
+	CourseDuration   int32
+	DepartmentID     uuid.UUID
+	UniversityID     uuid.UUID
+	LecturerID       uuid.NullUUID
+	SessionsPerWeek  int32
+	Level            int32
+	Semester         string
+	VenueID          uuid.UUID
+}
+
+func (q *Queries) RetriveAllCoursesAndTheirVenueIds(ctx context.Context, universityID uuid.UUID) ([]RetriveAllCoursesAndTheirVenueIdsRow, error) {
+	rows, err := q.db.QueryContext(ctx, retriveAllCoursesAndTheirVenueIds, universityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RetriveAllCoursesAndTheirVenueIdsRow
+	for rows.Next() {
+		var i RetriveAllCoursesAndTheirVenueIdsRow
+		if err := rows.Scan(
+			&i.CourseID,
+			&i.CourseCode,
+			&i.CourseTitle,
+			&i.CourseCreditUnit,
+			&i.CourseDuration,
+			&i.DepartmentID,
+			&i.UniversityID,
+			&i.LecturerID,
+			&i.SessionsPerWeek,
+			&i.Level,
+			&i.Semester,
+			&i.VenueID,
 		); err != nil {
 			return nil, err
 		}

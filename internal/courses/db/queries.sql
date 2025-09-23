@@ -47,6 +47,29 @@ WHERE course_id = $9
 RETURNING *;
 
 
+-- name: RetriveAllCoursesAndTheirVenueIds :many
+SELECT
+    c.course_id,
+    c.course_code,
+    c.course_title,
+    c.course_credit_unit,
+    c.course_duration,
+    c.department_id,
+    c.university_id,
+    c.lecturer_id,
+    c.sessions_per_week,
+    c.level,
+    c.semester,
+    cpv.venue_id
+FROM courses c
+INNER JOIN 
+    courses_possible_venues cpv 
+ON 
+    cpv.course_id = c.course_id
+WHERE c.university_id = $1;
+
+
+
 -- name: DeleteCourse :exec
 DELETE FROM courses
 WHERE course_id = $1;

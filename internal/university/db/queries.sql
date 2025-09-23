@@ -87,6 +87,9 @@ RETURNING *;
 SELECT * FROM cohorts
 WHERE cohort_university_id = $1;
 
+-- name: CountCohortsForOneUni :one
+SELECT COUNT(*) FROM cohorts
+WHERE cohort_university_id = $1;
 
 -- name: RetrieveDeptsForAFaculty :many
 SELECT * FROM departments
@@ -106,6 +109,18 @@ INSERT INTO venues(
     $1,$2,$3,$4,$5,$6,$7
 )
 RETURNING *;
+
+-- name: CountVenuesForUni :one
+SELECT COUNT(*) FROM venues 
+WHERE university_id = $1;
+
+-- name: CountVenuesforFaculty :one
+SELECT COUNT(*) FROM faculty_venues
+WHERE university_id = $1 AND faculty_id = $2;
+
+-- name: CountVenuesForDepartment :one
+SELECT COUNT(*) FROM dept_venues
+WHERE university_id = $1 AND department_id = $2;
 
 -- name: SetFacultyVenue :exec
 INSERT INTO faculty_venues(

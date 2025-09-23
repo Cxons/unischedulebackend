@@ -32,3 +32,11 @@ func (lq *LecturerQueries) RequestLecturerConfirmation(ctx context.Context, lect
 func (lq *LecturerQueries) CheckLecturerConfirmation(ctx context.Context,waitId uuid.UUID)(sqlc.CheckLecturerConfirmationRow,error){
 	return lq.q.CheckLecturerConfirmation(ctx,waitId)
 }
+
+func (lq *LecturerQueries) RetrieveTotalLecturersUnavailability(ctx context.Context, universityId uuid.NullUUID)([]sqlc.RetrieveTotalLecturerUnavailabilityRow,error){
+	return lq.q.RetrieveTotalLecturerUnavailability(ctx,universityId)
+}
+
+func (lq *LecturerQueries) RetrieveTotalLecturersCount(ctx context.Context,universityId uuid.NullUUID)(int64,error){
+	return lq.q.CountTotalLecturers(ctx,universityId)
+}
