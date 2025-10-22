@@ -1,5 +1,3 @@
 package routes
 
-
-
-func Routes()
+// func Routes()

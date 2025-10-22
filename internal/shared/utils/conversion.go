@@ -46,7 +46,7 @@ func StringToUUID(s string) uuid.UUID {
     return id
 }
 
-func StringToTime ( s string) (time.Time,error){
+func StringToTime( s string) (time.Time,error){
     date,err := time.Parse(time.RFC3339,s)
     if err != nil{
         return time.Time{},err

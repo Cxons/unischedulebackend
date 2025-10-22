@@ -41,3 +41,7 @@ func (vq *VenueQueries) SetDepartmentVenue(ctx context.Context, param sqlc.SetDe
 func (vq *VenueQueries) RetrieveTotalVenueUnavailability(ctx context.Context,universityId uuid.UUID)([]sqlc.RetrieveTotalVenueUnavailabilityRow,error){
 	return vq.q.RetrieveTotalVenueUnavailability(ctx,universityId)
 }
+
+func (vq *VenueQueries) RetrieveTotalVenueCount(ctx context.Context, universityId uuid.UUID)(int64,error){
+	return vq.q.CountVenuesForUni(ctx, universityId)
+}
