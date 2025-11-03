@@ -87,6 +87,33 @@ INNER JOIN venue_unavailability vu
 ON v.venue_id = vu.venue_id
 WHERE v.university_id = $1;
 
+-- name: RetrieveAllVenues :many
+SELECT 
+    venue_id,
+    venue_name,
+    venue_longitude,
+    venue_latitude,
+    location,
+    venue_image,
+    is_active
+FROM venues
+WHERE university_id = $1;
+
+-- name: RetrieveAllCourses :many
+SELECT
+    course_id,
+    course_code,
+    course_title,
+    course_credit_unit,
+    course_duration,
+    department_id,
+    university_id,
+    lecturer_id,
+    sessions_per_week,
+    semester
+FROM courses
+WHERE university_id = $1;
+
 
 
 

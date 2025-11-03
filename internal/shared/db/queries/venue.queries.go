@@ -45,3 +45,7 @@ func (vq *VenueQueries) RetrieveTotalVenueUnavailability(ctx context.Context,uni
 func (vq *VenueQueries) RetrieveTotalVenueCount(ctx context.Context, universityId uuid.UUID)(int64,error){
 	return vq.q.CountVenuesForUni(ctx, universityId)
 }
+
+func (vq  *VenueQueries) RetrieveAllVenues(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveAllVenuesRow,error){
+	return vq.q.RetrieveAllVenues(ctx,uniId)
+}

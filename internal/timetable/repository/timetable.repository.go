@@ -32,7 +32,9 @@ type timetableRepository struct {
 
 
 
-func NewTimeTableRepository(){}
+func NewTimeTableRepository(){
+
+}
 
 
 func (ttrp *timetableRepository) CountNumVenues(ctx context.Context,uniId uuid.UUID)(int64,error){
@@ -58,4 +60,12 @@ func (ttrp *timetableRepository) RetrieveTotalVenueUnavailability(ctx context.Co
 
 func (ttrp *timetableRepository) RetrieveTotalLecturerUnavailability(ctx context.Context,uniId uuid.NullUUID)([]sqlc.RetrieveTotalLecturerUnavailabilityRow,error){
 	return ttrp.lq.RetrieveTotalLecturersUnavailability(ctx,uniId)
+}
+
+func (ttrp *timetableRepository) RetrieveAllVenues(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveAllVenuesRow,error){
+	return ttrp.vq.RetrieveAllVenues(ctx,uniId)
+}
+
+func (ttrp *timetableRepository) RetrieveAllCourses(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveAllCoursesRow,error){
+	return ttrp.cq.RetrieveAllCourses(ctx,uniId)
 }

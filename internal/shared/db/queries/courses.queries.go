@@ -55,3 +55,7 @@ func (cq *CoursesQueries) UpdateCourseLecturers(ctx context.Context,param sqlc.U
 func (cq *CoursesQueries) CountCoursesForAUni(ctx context.Context,uniId uuid.UUID)(int64,error){
 	return cq.q.CountTotalCourses(ctx,uniId)
 }
+
+func (cq *CoursesQueries) RetrieveAllCourses(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveAllCoursesRow,error){
+	return cq.q.RetrieveAllCourses(ctx,uniId)
+}

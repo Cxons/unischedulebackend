@@ -1135,6 +1135,69 @@ func (q *Queries) RetrieveAllCohorts(ctx context.Context, cohortUniversityID uui
 	return items, nil
 }
 
+const retrieveAllCourses = `-- name: RetrieveAllCourses :many
+SELECT
+    course_id,
+    course_code,
+    course_title,
+    course_credit_unit,
+    course_duration,
+    department_id,
+    university_id,
+    lecturer_id,
+    sessions_per_week,
+    semester
+FROM courses
+WHERE university_id = $1
+`
+
+type RetrieveAllCoursesRow struct {
+	CourseID         uuid.UUID
+	CourseCode       string
+	CourseTitle      string
+	CourseCreditUnit int32
+	CourseDuration   int32
+	DepartmentID     uuid.UUID
+	UniversityID     uuid.UUID
+	LecturerID       uuid.NullUUID
+	SessionsPerWeek  int32
+	Semester         string
+}
+
+func (q *Queries) RetrieveAllCourses(ctx context.Context, universityID uuid.UUID) ([]RetrieveAllCoursesRow, error) {
+	rows, err := q.db.QueryContext(ctx, retrieveAllCourses, universityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RetrieveAllCoursesRow
+	for rows.Next() {
+		var i RetrieveAllCoursesRow
+		if err := rows.Scan(
+			&i.CourseID,
+			&i.CourseCode,
+			&i.CourseTitle,
+			&i.CourseCreditUnit,
+			&i.CourseDuration,
+			&i.DepartmentID,
+			&i.UniversityID,
+			&i.LecturerID,
+			&i.SessionsPerWeek,
+			&i.Semester,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const retrieveAllUniversities = `-- name: RetrieveAllUniversities :many
 SELECT university_id, university_name, university_logo, university_abbr, email, website, phone_number, university_addr, current_session, created_at, updated_at FROM universities
 `
@@ -1160,6 +1223,60 @@ func (q *Queries) RetrieveAllUniversities(ctx context.Context) ([]University, er
 			&i.CurrentSession,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const retrieveAllVenues = `-- name: RetrieveAllVenues :many
+SELECT 
+    venue_id,
+    venue_name,
+    venue_longitude,
+    venue_latitude,
+    location,
+    venue_image,
+    is_active
+FROM venues
+WHERE university_id = $1
+`
+
+type RetrieveAllVenuesRow struct {
+	VenueID        uuid.UUID
+	VenueName      string
+	VenueLongitude sql.NullFloat64
+	VenueLatitude  sql.NullFloat64
+	Location       sql.NullString
+	VenueImage     sql.NullString
+	IsActive       sql.NullBool
+}
+
+func (q *Queries) RetrieveAllVenues(ctx context.Context, universityID uuid.UUID) ([]RetrieveAllVenuesRow, error) {
+	rows, err := q.db.QueryContext(ctx, retrieveAllVenues, universityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RetrieveAllVenuesRow
+	for rows.Next() {
+		var i RetrieveAllVenuesRow
+		if err := rows.Scan(
+			&i.VenueID,
+			&i.VenueName,
+			&i.VenueLongitude,
+			&i.VenueLatitude,
+			&i.Location,
+			&i.VenueImage,
+			&i.IsActive,
 		); err != nil {
 			return nil, err
 		}
