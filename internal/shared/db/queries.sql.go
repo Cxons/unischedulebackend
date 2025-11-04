@@ -1198,6 +1198,79 @@ func (q *Queries) RetrieveAllCourses(ctx context.Context, universityID uuid.UUID
 	return items, nil
 }
 
+const retrieveAllCoursesAndTheirVenueIds = `-- name: RetrieveAllCoursesAndTheirVenueIds :many
+SELECT
+    c.course_id,
+    c.course_code,
+    c.course_title,
+    c.course_credit_unit,
+    c.course_duration,
+    c.department_id,
+    c.university_id,
+    c.lecturer_id,
+    c.sessions_per_week,
+    c.level,
+    c.semester,
+    cpv.venue_id
+FROM courses c
+INNER JOIN 
+    courses_possible_venues cpv 
+ON 
+    cpv.course_id = c.course_id
+WHERE c.university_id = $1
+`
+
+type RetrieveAllCoursesAndTheirVenueIdsRow struct {
+	CourseID         uuid.UUID
+	CourseCode       string
+	CourseTitle      string
+	CourseCreditUnit int32
+	CourseDuration   int32
+	DepartmentID     uuid.UUID
+	UniversityID     uuid.UUID
+	LecturerID       uuid.NullUUID
+	SessionsPerWeek  int32
+	Level            int32
+	Semester         string
+	VenueID          uuid.UUID
+}
+
+func (q *Queries) RetrieveAllCoursesAndTheirVenueIds(ctx context.Context, universityID uuid.UUID) ([]RetrieveAllCoursesAndTheirVenueIdsRow, error) {
+	rows, err := q.db.QueryContext(ctx, retrieveAllCoursesAndTheirVenueIds, universityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RetrieveAllCoursesAndTheirVenueIdsRow
+	for rows.Next() {
+		var i RetrieveAllCoursesAndTheirVenueIdsRow
+		if err := rows.Scan(
+			&i.CourseID,
+			&i.CourseCode,
+			&i.CourseTitle,
+			&i.CourseCreditUnit,
+			&i.CourseDuration,
+			&i.DepartmentID,
+			&i.UniversityID,
+			&i.LecturerID,
+			&i.SessionsPerWeek,
+			&i.Level,
+			&i.Semester,
+			&i.VenueID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const retrieveAllUniversities = `-- name: RetrieveAllUniversities :many
 SELECT university_id, university_name, university_logo, university_abbr, email, website, phone_number, university_addr, current_session, created_at, updated_at FROM universities
 `
@@ -1968,79 +2041,6 @@ func (q *Queries) RetrieveUniversitiesWithLimit(ctx context.Context, limit int32
 			&i.CurrentSession,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const retriveAllCoursesAndTheirVenueIds = `-- name: RetriveAllCoursesAndTheirVenueIds :many
-SELECT
-    c.course_id,
-    c.course_code,
-    c.course_title,
-    c.course_credit_unit,
-    c.course_duration,
-    c.department_id,
-    c.university_id,
-    c.lecturer_id,
-    c.sessions_per_week,
-    c.level,
-    c.semester,
-    cpv.venue_id
-FROM courses c
-INNER JOIN 
-    courses_possible_venues cpv 
-ON 
-    cpv.course_id = c.course_id
-WHERE c.university_id = $1
-`
-
-type RetriveAllCoursesAndTheirVenueIdsRow struct {
-	CourseID         uuid.UUID
-	CourseCode       string
-	CourseTitle      string
-	CourseCreditUnit int32
-	CourseDuration   int32
-	DepartmentID     uuid.UUID
-	UniversityID     uuid.UUID
-	LecturerID       uuid.NullUUID
-	SessionsPerWeek  int32
-	Level            int32
-	Semester         string
-	VenueID          uuid.UUID
-}
-
-func (q *Queries) RetriveAllCoursesAndTheirVenueIds(ctx context.Context, universityID uuid.UUID) ([]RetriveAllCoursesAndTheirVenueIdsRow, error) {
-	rows, err := q.db.QueryContext(ctx, retriveAllCoursesAndTheirVenueIds, universityID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []RetriveAllCoursesAndTheirVenueIdsRow
-	for rows.Next() {
-		var i RetriveAllCoursesAndTheirVenueIdsRow
-		if err := rows.Scan(
-			&i.CourseID,
-			&i.CourseCode,
-			&i.CourseTitle,
-			&i.CourseCreditUnit,
-			&i.CourseDuration,
-			&i.DepartmentID,
-			&i.UniversityID,
-			&i.LecturerID,
-			&i.SessionsPerWeek,
-			&i.Level,
-			&i.Semester,
-			&i.VenueID,
 		); err != nil {
 			return nil, err
 		}

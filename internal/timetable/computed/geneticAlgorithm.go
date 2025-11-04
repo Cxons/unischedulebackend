@@ -26,7 +26,6 @@ import (
 // 	SessionDuration int  // so a 2 hour course is 2 and has 2 slots
 // 	AllowedVenues []uuid.UUID
 // 	CreditUnit int
-
 // }
 
 // type Session struct {

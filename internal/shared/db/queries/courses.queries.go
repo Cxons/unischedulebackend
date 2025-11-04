@@ -59,3 +59,7 @@ func (cq *CoursesQueries) CountCoursesForAUni(ctx context.Context,uniId uuid.UUI
 func (cq *CoursesQueries) RetrieveAllCourses(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveAllCoursesRow,error){
 	return cq.q.RetrieveAllCourses(ctx,uniId)
 }
+
+func (cq *CoursesQueries) RetrieveAllCoursesAndVenues(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveAllCoursesAndTheirVenueIdsRow,error){
+	return cq.q.RetrieveAllCoursesAndTheirVenueIds(ctx,uniId)
+}

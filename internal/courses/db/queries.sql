@@ -47,7 +47,7 @@ WHERE course_id = $9
 RETURNING *;
 
 
--- name: RetriveAllCoursesAndTheirVenueIds :many
+-- name: RetrieveAllCoursesAndTheirVenueIds :many
 SELECT
     c.course_id,
     c.course_code,

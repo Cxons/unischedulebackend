@@ -8,21 +8,19 @@ import (
 	"github.com/google/uuid"
 )
 
+type TimetableRepository interface{
+	CountNumVenues(ctx context.Context,uniId uuid.UUID)(int64,error)
+	CountNumLecturers(ctx context.Context, uniId uuid.NullUUID)(int64,error)
+	CountNumCohorts(ctx context.Context,uniId uuid.UUID)(int64,error)
+	CountNumCourses(ctx context.Context, uniId uuid.UUID)(int64,error)
+	RetrieveTotalVenueUnavailability(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveTotalVenueUnavailabilityRow,error)
+	RetrieveTotalLecturerUnavailability(ctx context.Context,uniId uuid.NullUUID)([]sqlc.RetrieveTotalLecturerUnavailabilityRow,error)
+	RetrieveAllVenues(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveAllVenuesRow,error)
+	RetrieveAllCourses(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveAllCoursesRow,error)
+	RetrieveAllCoursesAndVenues(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveAllCoursesAndTheirVenueIdsRow,error)
+	RetrieveAllCohorts(ctx context.Context,uniId uuid.UUID)([]sqlc.Cohort,error)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}
 type timetableRepository struct {
 	vq *queries.VenueQueries
 	lq *queries.LecturerQueries
@@ -32,7 +30,13 @@ type timetableRepository struct {
 
 
 
-func NewTimeTableRepository(){
+func NewtimeTableRepository(vq *queries.VenueQueries, lq *queries.LecturerQueries,cohq *queries.CohortQueries, cq *queries.CoursesQueries)*timetableRepository{
+	return &timetableRepository{
+		vq: vq,
+		lq: lq,
+		cohq:cohq,
+		cq:cq,
+	}
 
 }
 
@@ -69,3 +73,16 @@ func (ttrp *timetableRepository) RetrieveAllVenues(ctx context.Context, uniId uu
 func (ttrp *timetableRepository) RetrieveAllCourses(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveAllCoursesRow,error){
 	return ttrp.cq.RetrieveAllCourses(ctx,uniId)
 }
+
+func (ttrp *timetableRepository) RetrieveAllCoursesAndVenues(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveAllCoursesAndTheirVenueIdsRow,error){
+	return ttrp.cq.RetrieveAllCoursesAndVenues(ctx,uniId)
+}
+
+func (ttrp *timetableRepository) RetrieveAllCohorts(ctx context.Context,uniId uuid.UUID)([]sqlc.Cohort,error){
+	return ttrp.cohq.RetrieveAllCohorts(ctx,uniId)
+}
+
+func (ttrp *timetableRepository) RetrieveTotalLecturers(ctx context.Context, uniId uuid.NullUUID)([]sqlc.RetrieveTotalLecturersRow,error){
+	return ttrp.lq.RetrieveAllLecturers(ctx,uniId)
+}
+

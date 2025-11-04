@@ -40,3 +40,7 @@ func (lq *LecturerQueries) RetrieveTotalLecturersUnavailability(ctx context.Cont
 func (lq *LecturerQueries) RetrieveTotalLecturersCount(ctx context.Context,universityId uuid.NullUUID)(int64,error){
 	return lq.q.CountTotalLecturers(ctx,universityId)
 }
+
+func (lq *LecturerQueries) RetrieveAllLecturers(ctx context.Context, uniId uuid.NullUUID)([]sqlc.RetrieveTotalLecturersRow,error){
+	return lq.q.RetrieveTotalLecturers(ctx,uniId)
+}
