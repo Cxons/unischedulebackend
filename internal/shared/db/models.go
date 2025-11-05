@@ -22,6 +22,14 @@ type Cohort struct {
 	UpdatedAt          sql.NullTime
 }
 
+type CohortCoursesOffered struct {
+	CohortID     uuid.UUID
+	CourseID     uuid.UUID
+	UniversityID uuid.UUID
+	CreatedAt    sql.NullTime
+	UpdatedAt    sql.NullTime
+}
+
 type Course struct {
 	CourseID         uuid.UUID
 	CourseCode       string

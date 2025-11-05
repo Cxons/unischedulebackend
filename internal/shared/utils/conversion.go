@@ -17,6 +17,20 @@ func StringToNullString(s string) sql.NullString {
     }
 }
 
+func NullStringToString(s sql.NullString) (string,error){
+      if !s.Valid{
+        return "",errors.New("No string present")
+    }
+    return s.String,nil
+}
+
+func NullTimeToTime (t sql.NullTime)(time.Time,error){
+    if !t.Valid{
+        return time.Time{},errors.New("No time present")
+    }
+    return t.Time,nil
+}
+
 func NullBoolToBool(nb sql.NullBool) bool{
     if !nb.Valid{
         return false
@@ -66,4 +80,12 @@ func StringToNullTime(s string) (sql.NullTime,error){
         Valid: true,
         Time: date,
     },nil
+}
+
+
+func NullUUIDToUUid (val uuid.NullUUID)(uuid.UUID,error){
+    if !val.Valid{
+        return uuid.UUID{},errors.New("No uuid present")
+    }
+    return val.UUID,nil
 }

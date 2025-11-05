@@ -1364,6 +1364,44 @@ func (q *Queries) RetrieveAllVenues(ctx context.Context, universityID uuid.UUID)
 	return items, nil
 }
 
+const retrieveCohortsForAllCourses = `-- name: RetrieveCohortsForAllCourses :many
+SELECT 
+    cohort_id,
+    course_id,
+    university_id
+FROM cohort_courses_offered
+WHERE university_id = $1
+`
+
+type RetrieveCohortsForAllCoursesRow struct {
+	CohortID     uuid.UUID
+	CourseID     uuid.UUID
+	UniversityID uuid.UUID
+}
+
+func (q *Queries) RetrieveCohortsForAllCourses(ctx context.Context, universityID uuid.UUID) ([]RetrieveCohortsForAllCoursesRow, error) {
+	rows, err := q.db.QueryContext(ctx, retrieveCohortsForAllCourses, universityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RetrieveCohortsForAllCoursesRow
+	for rows.Next() {
+		var i RetrieveCohortsForAllCoursesRow
+		if err := rows.Scan(&i.CohortID, &i.CourseID, &i.UniversityID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const retrieveCoursesForADepartment = `-- name: RetrieveCoursesForADepartment :many
 SELECT
     course_code,

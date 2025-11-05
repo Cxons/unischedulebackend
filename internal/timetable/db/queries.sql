@@ -115,6 +115,16 @@ FROM courses
 WHERE university_id = $1;
 
 
+-- name: RetrieveCohortsForAllCourses :many
+SELECT 
+    cohort_id,
+    course_id,
+    university_id
+FROM cohort_courses_offered
+WHERE university_id = $1;
+
+
+
 
 
 

@@ -86,3 +86,6 @@ func (ttrp *timetableRepository) RetrieveTotalLecturers(ctx context.Context, uni
 	return ttrp.lq.RetrieveAllLecturers(ctx,uniId)
 }
 
+func (ttrp *timetableRepository) RetrieveTotalCohortCourses(ctx context.Context,uniId uuid.UUID)([]sqlc.RetrieveCohortsForAllCoursesRow,error){
+	return ttrp.cohq.RetrieveTotalCohortCourses(ctx,uniId)
+}
