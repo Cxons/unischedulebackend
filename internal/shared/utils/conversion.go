@@ -52,6 +52,13 @@ func StringToNullUUID(s string) uuid.NullUUID {
     }
 }
 
+func UuidToNullUUID(id uuid.UUID) uuid.NullUUID{
+    return uuid.NullUUID{
+        UUID: id,
+        Valid: true,
+    }
+}
+
 func StringToUUID(s string) uuid.UUID {
     id,err := uuid.Parse(s)
     if err != nil{

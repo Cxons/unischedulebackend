@@ -1,13 +1,19 @@
 package computed
 
 import (
+	"context"
 	"time"
 
 	sqlc "github.com/Cxons/unischedulebackend/internal/shared/db"
 	"github.com/Cxons/unischedulebackend/internal/shared/utils"
+	"github.com/Cxons/unischedulebackend/internal/timetable/repository"
 	"github.com/google/uuid"
 )
 
+
+type Computed struct {
+	timetableRepository repository.TimetableRepository
+}
 
 type modifiedCourseAndVenueData struct{
 	CourseId uuid.UUID
@@ -220,6 +226,7 @@ func ComputeVenueUnavaibility(venueUnavailable []sqlc.RetrieveTotalVenueUnavaila
 		if !exists{
 			continue
 		}
+		// remember all the possible errors that could occur here
 		val,_ := utils.NullStringToString(row.Day)
 		startTime,_ := utils.NullTimeToTime(row.StartTime)
 		endTime,_ := utils.NullTimeToTime(row.EndTime)
@@ -247,34 +254,39 @@ func ComputeVenueUnavaibility(venueUnavailable []sqlc.RetrieveTotalVenueUnavaila
 }
 
 
-func ComputePreComputed()
+func (c *Computed) ComputePreComputed(ctx context.Context, uniId uuid.UUID,slotsPerDay int, startOfDay time.Time,days[]string,slotDuration time.Duration)*PreComputed{
+	rawCohortData,_ := c.timetableRepository.RetrieveAllCohorts(ctx,uniId)
+	rawCoursesData,_ := c.timetableRepository.RetrieveAllCourses(ctx,uniId)
+	rawVenuesData,_ := c.timetableRepository.RetrieveAllVenues(ctx,uniId)
+	rawLecturersData,_ := c.timetableRepository.RetrieveTotalLecturers(ctx,utils.UuidToNullUUID(uniId))
+	rawCohortCourseData,_ := c.timetableRepository.RetrieveCohortsForAllCourses(ctx,uniId)
+	rawCourseAndVenueData,_ := c.timetableRepository.RetrieveAllCoursesAndVenues(ctx,uniId)
+	cohortMap := MapCohortIdToIdx(rawCohortData)
+	venueMap := MapVanueIdToIdx(rawVenuesData)
+	lecturerMap := MapLecturerIdToIdx(rawLecturersData)
+	coursesMap := MapCoursesIdtoIdx(rawCoursesData)
+	courseData := ModifyCourseData(rawCourseAndVenueData)
+	cohortCourseData := ModifyCohortCourseData(rawCohortCourseData)
+	rawLecturerUnavailability,_ := c.timetableRepository.RetrieveTotalLecturerUnavailability(ctx,utils.UuidToNullUUID(uniId))
+	rawVenueUnavailability,_ := c.timetableRepository.RetrieveTotalVenueUnavailability(ctx,uniId)
+	venueUnavailability := ComputeVenueUnavaibility(rawVenueUnavailability,venueMap,days,slotDuration,startOfDay,slotsPerDay)
+	lecturerUnavailability := ComputeLecturerUnavailability(rawLecturerUnavailability,lecturerMap,days,slotDuration,startOfDay,slotsPerDay)
+	sessionAtoms := CreateSessionAtoms(lecturerMap,venueMap,coursesMap,cohortMap,courseData,cohortCourseData)
+	totalSlots := slotsPerDay * len(days)
+	numVenues,_ := c.timetableRepository.CountNumVenues(ctx,uniId)
+	numLecturers,_ := c.timetableRepository.CountNumLecturers(ctx,utils.UuidToNullUUID(uniId))
+	numCohorts,_ := c.timetableRepository.CountNumCohorts(ctx,uniId)
+	numCourses,_ := c.timetableRepository.CountNumCourses(ctx,uniId)
 
-// things that i need to do are these
-/*
-1. Create a table for courses and cohorts
-2. fetch all the cohorts attached with a particular course
-3. Convert cohort lecturer and course into idxs
-4. function to create a session atom which involves looping over courses and their number of times offered per week
-
-*/
-
-
-
-// function to get number of venues
-
-//function to get number of lecturers
-
-// function to get number of cohorts
-
-// function to get total number of courses
-
-// function that retrieves all the courses alongside their allowed venues
-
-// function that retrieves all the lecturers and unavailablity
-
-// function that retrieves all the venues and their unavailablities
-
-// function that maps the following ids to idx
-/*
-cohorts, lecturers , courses,venues
-*/
+	return &PreComputed{
+		TotalSlots: totalSlots,
+		SlotsPerDay: slotsPerDay,
+		NumVenues: int(numVenues),
+		NumLecturers: int(numLecturers),
+		NumCohorts: int(numCohorts),
+		NumCourses: int(numCourses),
+		SessionAtoms: sessionAtoms,
+		LecturerUnavailable: lecturerUnavailability,
+		VenueUnavailable: venueUnavailability,
+	}
+}

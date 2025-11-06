@@ -19,6 +19,8 @@ type TimetableRepository interface{
 	RetrieveAllCourses(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveAllCoursesRow,error)
 	RetrieveAllCoursesAndVenues(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveAllCoursesAndTheirVenueIdsRow,error)
 	RetrieveAllCohorts(ctx context.Context,uniId uuid.UUID)([]sqlc.Cohort,error)
+	RetrieveTotalLecturers(ctx context.Context, uniId uuid.NullUUID)([]sqlc.RetrieveTotalLecturersRow,error)
+	RetrieveCohortsForAllCourses(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveCohortsForAllCoursesRow,error)
 
 }
 type timetableRepository struct {
@@ -87,5 +89,9 @@ func (ttrp *timetableRepository) RetrieveTotalLecturers(ctx context.Context, uni
 }
 
 func (ttrp *timetableRepository) RetrieveTotalCohortCourses(ctx context.Context,uniId uuid.UUID)([]sqlc.RetrieveCohortsForAllCoursesRow,error){
+	return ttrp.cohq.RetrieveTotalCohortCourses(ctx,uniId)
+}
+
+func (ttrp *timetableRepository) RetrieveCohortsForAllCourses(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveCohortsForAllCoursesRow,error){
 	return ttrp.cohq.RetrieveTotalCohortCourses(ctx,uniId)
 }
