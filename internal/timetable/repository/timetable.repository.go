@@ -25,7 +25,6 @@ type TimetableRepository interface{
 	CreateACandidateTimeTable(ctx context.Context, candidateData sqlc.CreateCandidateParams, sessionPlacements []types.CustomSessionPlacement)error
 	DeprecateLatestCandidate(ctx context.Context,uniId uuid.UUID)error
 	RestoreCurrentCandidate(ctx context.Context,uniId uuid.UUID)error
-
 }
 type timetableRepository struct {
 	vq *queries.VenueQueries

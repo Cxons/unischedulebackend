@@ -63,9 +63,10 @@ func NewRegPackage(logger *slog.Logger,db *sql.DB )*RegHandler{
 	hodQueries := queries.NewHodQueries(query)
 	facQueries := queries.NewFacQueries(query)
 	deptQueries := queries.NewDeptQueries(query)
+	store := sqlc.NewStore(db)
 
 	// initializes repository
-	repo := repository.NewRegRepository(adminQueries,studentQueries,lecturerQueries,uniQueries,deanQueries,hodQueries,facQueries,deptQueries)
+	repo := repository.NewRegRepository(adminQueries,studentQueries,lecturerQueries,uniQueries,deanQueries,hodQueries,facQueries,deptQueries,store)
 
 	// initializes service
 	service := service.NewRegService(repo,logger)

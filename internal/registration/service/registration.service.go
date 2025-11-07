@@ -350,7 +350,7 @@ func (rs *RegServiceStruct) CreateDepartment(ctx context.Context, deptInfo Creat
 		NumberOfLevels: int32(deptInfo.NumberOfLevels),
 	}
 
-	uni,err := rs.regRepo.CreateDepartment(ctx,department)
+	err := rs.regRepo.CreateDepartment(ctx,department)
 	
 	if err != nil {
 		rs.logger.Error("Error creating department","err:",err)
@@ -359,7 +359,6 @@ func (rs *RegServiceStruct) CreateDepartment(ctx context.Context, deptInfo Creat
 
 	return RegResponse{
 		Message: "Department created successfully",
-		Data:uni,
 		StatusCode: status.Created.Code,
 		StatusCodeMessage: status.Created.Message,
 	},status.Created.Message,nil

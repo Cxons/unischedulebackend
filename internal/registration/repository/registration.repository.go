@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strconv"
 
 	sqlc "github.com/Cxons/unischedulebackend/internal/shared/db"
 	"github.com/Cxons/unischedulebackend/internal/shared/db/queries"
@@ -28,7 +29,7 @@ type RegRepository interface{
 	CheckHodConfirmation(ctx context.Context, waitId uuid.UUID)(sqlc.CheckHodConfirmationRow,error)
 	CheckLecturerConfirmation(ctx context.Context, waitId uuid.UUID)(sqlc.CheckLecturerConfirmationRow,error)
 	CreateFaculty(ctx context.Context, facInfo sqlc.CreateFacultyParams)(sqlc.Faculty,error)
-	CreateDepartment(ctx context.Context,deptInfo sqlc.CreateDepartmentParams)(sqlc.Department,error)
+	CreateDepartment(ctx context.Context,deptInfo sqlc.CreateDepartmentParams)error
 	CreateDean(ctx context.Context, deanInfo sqlc.CreateDeanParams)(sqlc.CurrentDean,error)
 	CreateHod(ctx context.Context, hodInfo sqlc.CreateHodParams)(sqlc.CurrentHod,error)
 	RetrieveAdmin(ctx context.Context,adminId uuid.UUID)(bool,sqlc.RetrieveAdminRow,error)
@@ -46,10 +47,11 @@ type regRepository struct{
 	hq *queries.HodQueries
 	fq *queries.FacQueries
 	dptq *queries.DeptQueries
+	store sqlc.Store
 
 }
 
-func NewRegRepository(aq *queries.AdminQueries,sq *queries.StudentQueries, lq *queries.LecturerQueries, uq *queries.UniQueries, dq *queries.DeanQueries, hq *queries.HodQueries, fq *queries.FacQueries,dptq *queries.DeptQueries)*regRepository{
+func NewRegRepository(aq *queries.AdminQueries,sq *queries.StudentQueries, lq *queries.LecturerQueries, uq *queries.UniQueries, dq *queries.DeanQueries, hq *queries.HodQueries, fq *queries.FacQueries,dptq *queries.DeptQueries, store sqlc.Store)*regRepository{
 	return &regRepository{
 		aq: aq,
 		sq: sq,
@@ -59,6 +61,7 @@ func NewRegRepository(aq *queries.AdminQueries,sq *queries.StudentQueries, lq *q
 		hq:hq,
 		fq:fq,
 		dptq:dptq,
+		store: store,
 	}
 }
 
@@ -129,8 +132,28 @@ func (rrp *regRepository) CheckHodConfirmation(ctx context.Context, waitId uuid.
 	return rrp.hq.CheckHodConfirmation(ctx,waitId)
 } 
 
-func (rrp *regRepository) CreateDepartment(ctx context.Context,deptInfo sqlc.CreateDepartmentParams)(sqlc.Department,error){
-	return rrp.dptq.CreateDeparment(ctx,deptInfo)
+func (rrp *regRepository) CreateDepartment(ctx context.Context,deptInfo sqlc.CreateDepartmentParams)error{
+
+	return rrp.store.ExecTx(ctx,func(q *sqlc.Queries)error{
+		department,createDeptErr := q.CreateDepartment(ctx,deptInfo)
+		if createDeptErr != nil{
+			return createDeptErr
+		}
+		for i := range department.NumberOfLevels{
+			cohort := sqlc.CreateCohortParams{
+				CohortName: department.DepartmentName + " " + strconv.Itoa(int(i)) + "00 level",
+				CohortLevel: i,
+				CohortDepartmentID: department.DepartmentID,
+				CohortFacultyID: department.FacultyID,
+				CohortUniversityID: department.UniversityID,
+			}
+			_,createCohortErr := q.CreateCohort(ctx,cohort)
+			if createCohortErr != nil{
+				return createCohortErr
+			}
+		}
+		return nil
+	})
 }
 
 func (rrp *regRepository) RetrievePendingLecturers(ctx context.Context, hodInfo sqlc.RetrievePendingLecturersParams)([]sqlc.LecturerWaitingList,error){
