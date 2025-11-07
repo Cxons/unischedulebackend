@@ -383,6 +383,33 @@ func (q *Queries) CountVenuesforFaculty(ctx context.Context, arg CountVenuesforF
 	return count, err
 }
 
+const createCandidate = `-- name: CreateCandidate :one
+INSERT INTO candidates(
+    fitness,university_id,candidate_status
+)VALUES($1,$2,$3)
+RETURNING id, fitness, university_id, candidate_status, created_at, updated_at
+`
+
+type CreateCandidateParams struct {
+	Fitness         float64
+	UniversityID    uuid.UUID
+	CandidateStatus string
+}
+
+func (q *Queries) CreateCandidate(ctx context.Context, arg CreateCandidateParams) (Candidate, error) {
+	row := q.db.QueryRowContext(ctx, createCandidate, arg.Fitness, arg.UniversityID, arg.CandidateStatus)
+	var i Candidate
+	err := row.Scan(
+		&i.ID,
+		&i.Fitness,
+		&i.UniversityID,
+		&i.CandidateStatus,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createCohort = `-- name: CreateCohort :one
 INSERT INTO cohorts(cohort_name,
     cohort_level,
@@ -635,6 +662,49 @@ func (q *Queries) CreateHod(ctx context.Context, arg CreateHodParams) (CurrentHo
 	return i, err
 }
 
+const createSessionPlacements = `-- name: CreateSessionPlacements :one
+INSERT INTO session_placements(
+    candidate_id,session_idx,course_id,venue_id,day,session_time,university_id
+)VALUES($1,$2,$3,$4,$5,$6,$7)
+RETURNING id, candidate_id, session_idx, course_id, venue_id, day, session_time, university_id, created_at, updated_at
+`
+
+type CreateSessionPlacementsParams struct {
+	CandidateID  uuid.UUID
+	SessionIdx   int32
+	CourseID     uuid.UUID
+	VenueID      uuid.UUID
+	Day          string
+	SessionTime  time.Time
+	UniversityID uuid.UUID
+}
+
+func (q *Queries) CreateSessionPlacements(ctx context.Context, arg CreateSessionPlacementsParams) (SessionPlacement, error) {
+	row := q.db.QueryRowContext(ctx, createSessionPlacements,
+		arg.CandidateID,
+		arg.SessionIdx,
+		arg.CourseID,
+		arg.VenueID,
+		arg.Day,
+		arg.SessionTime,
+		arg.UniversityID,
+	)
+	var i SessionPlacement
+	err := row.Scan(
+		&i.ID,
+		&i.CandidateID,
+		&i.SessionIdx,
+		&i.CourseID,
+		&i.VenueID,
+		&i.Day,
+		&i.SessionTime,
+		&i.UniversityID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createUniversity = `-- name: CreateUniversity :one
 INSERT INTO universities(
     university_name,university_logo,university_abbr,email,website,phone_number,university_addr,current_session
@@ -763,6 +833,24 @@ func (q *Queries) DeleteRefreshToken(ctx context.Context, userID uuid.UUID) (Ref
 		&i.IsRevoked,
 	)
 	return i, err
+}
+
+const deprecateLatestCandidate = `-- name: DeprecateLatestCandidate :exec
+UPDATE candidates AS c
+SET candidate_status = 'DEPRECATED',
+    updated_at = NOW()
+WHERE c.id = (
+  SELECT id
+  FROM candidates
+  WHERE candidates.university_id = $1
+  ORDER BY created_at DESC
+  LIMIT 1
+)
+`
+
+func (q *Queries) DeprecateLatestCandidate(ctx context.Context, universityID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deprecateLatestCandidate, universityID)
+	return err
 }
 
 const insertOtp = `-- name: InsertOtp :one
@@ -1041,6 +1129,24 @@ func (q *Queries) RequestLecturerConfirmation(ctx context.Context, arg RequestLe
 		&i.Approved,
 	)
 	return i, err
+}
+
+const restoreCurrentCandidate = `-- name: RestoreCurrentCandidate :exec
+UPDATE candidates AS c
+SET candidate_status = 'CURRENT',
+    updated_at = NOW()
+WHERE c.id = (
+  SELECT id
+  FROM candidates
+  WHERE candidates.university_id = $1
+  ORDER BY created_at DESC
+  LIMIT 1
+)
+`
+
+func (q *Queries) RestoreCurrentCandidate(ctx context.Context, universityID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, restoreCurrentCandidate, universityID)
+	return err
 }
 
 const retrieveAdmin = `-- name: RetrieveAdmin :one

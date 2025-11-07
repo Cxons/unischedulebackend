@@ -124,6 +124,48 @@ FROM cohort_courses_offered
 WHERE university_id = $1;
 
 
+-- name: CreateCandidate :one
+INSERT INTO candidates(
+    fitness,university_id,candidate_status
+)VALUES($1,$2,$3)
+RETURNING *;
+
+
+-- name: CreateSessionPlacements :one
+INSERT INTO session_placements(
+    candidate_id,session_idx,course_id,venue_id,day,session_time,university_id
+)VALUES($1,$2,$3,$4,$5,$6,$7)
+RETURNING *;
+
+-- name: DeprecateLatestCandidate :exec
+UPDATE candidates AS c
+SET candidate_status = 'DEPRECATED',
+    updated_at = NOW()
+WHERE c.id = (
+  SELECT id
+  FROM candidates
+  WHERE candidates.university_id = $1
+  ORDER BY created_at DESC
+  LIMIT 1
+);
+
+-- name: RestoreCurrentCandidate :exec
+UPDATE candidates AS c
+SET candidate_status = 'CURRENT',
+    updated_at = NOW()
+WHERE c.id = (
+  SELECT id
+  FROM candidates
+  WHERE candidates.university_id = $1
+  ORDER BY created_at DESC
+  LIMIT 1
+);
+
+
+-- -- name: UpdateOtherCandidateStatus :one
+-- UPDATE 
+
+
 
 
 

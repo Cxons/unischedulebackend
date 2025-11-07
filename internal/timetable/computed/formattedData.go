@@ -254,7 +254,7 @@ func ComputeVenueUnavaibility(venueUnavailable []sqlc.RetrieveTotalVenueUnavaila
 }
 
 
-func (c *Computed) ComputePreComputed(ctx context.Context, uniId uuid.UUID,slotsPerDay int, startOfDay time.Time,days[]string,slotDuration time.Duration)*PreComputed{
+func (c *Computed) ComputePreComputed(ctx context.Context, uniId uuid.UUID,slotsPerDay int, startOfDay time.Time,days[]string,slotDuration time.Duration)(*PreComputed,map[uuid.UUID]int,map[uuid.UUID]int,map[uuid.UUID]int,map[uuid.UUID]int){
 	rawCohortData,_ := c.timetableRepository.RetrieveAllCohorts(ctx,uniId)
 	rawCoursesData,_ := c.timetableRepository.RetrieveAllCourses(ctx,uniId)
 	rawVenuesData,_ := c.timetableRepository.RetrieveAllVenues(ctx,uniId)
@@ -288,5 +288,5 @@ func (c *Computed) ComputePreComputed(ctx context.Context, uniId uuid.UUID,slots
 		SessionAtoms: sessionAtoms,
 		LecturerUnavailable: lecturerUnavailability,
 		VenueUnavailable: venueUnavailability,
-	}
+	},cohortMap,venueMap,lecturerMap,coursesMap
 }

@@ -6,60 +6,6 @@ import (
 	"sort"
 	"time"
 )
-
-// type FixedTimeTableConfig struct {
-// 	DaysPerWeek int
-// 	SlotsPerDay int
-// 	SlotDuration int
-// 	DayStartHour int // e.g 8 for 8am
-// 	TotalSlots int
-// }
-
-// type CourseOffering struct {
-// 	OfferingId uuid.UUID
-// 	CourseId uuid.UUID
-// 	UniversityId uuid.UUID
-// 	DepartmentId uuid.UUID
-// 	LecturerId uuid.UUID
-// 	Cohorts []uuid.UUID // array of cohorts(groups) offering the course
-// 	SessionsPerWeek int
-// 	SessionDuration int  // so a 2 hour course is 2 and has 2 slots
-// 	AllowedVenues []uuid.UUID
-// 	CreditUnit int
-// }
-
-// type Session struct {
-// 	SessionId uuid.UUID
-// 	CourseId uuid.UUID
-// 	Cohorts []uuid.UUID
-// 	LecturerId uuid.UUID
-// 	SessionDuration int // how long for each session e.g 2 for 2 hours
-// 	NoPerWeek int// how many times the course should hold
-// 	AllowedVenues []uuid.UUID
-// }
-
-// type Cohort struct {
-// 	CohortId uuid.UUID
-// 	CohortName string
-// 	UniversityId uuid.UUID
-// 	DepartmentId uuid.UUID
-// 	Level int
-
-// }
-
-// type Venue struct {
-// 	VenueId uuid.UUID
-// 	UniversityId uuid.UUID
-// 	Capacity int // how much the class can hold
-// }
-
-// type Lecturer struct {
-// 	LecturerId uuid.UUID
-// 	UniversityId uuid.UUID
-// 	LecturerUnavailability []bool // the length is the total slots allowed
-// }
-
-// there should be a map of uuids to the indexes here..indicates current session placement
 type SessionPlacement struct {
 	SessionIdx int
 	CourseIdx  int
@@ -702,7 +648,7 @@ func SelectBestCandidateFromPopulation(pop []*Candidate) *Candidate {
 	return pop[counter]
 }
 
-func GeneticAlgorithm(pre *PreComputed) *Candidate {
+func (c *Computed)GeneticAlgorithm(pre *PreComputed) *Candidate {
 	seed := int64(50)
 	populationSize := 100
 	k := 5

@@ -5,6 +5,7 @@ import (
 
 	sqlc "github.com/Cxons/unischedulebackend/internal/shared/db"
 	"github.com/Cxons/unischedulebackend/internal/shared/db/queries"
+	"github.com/Cxons/unischedulebackend/internal/timetable/types"
 	"github.com/google/uuid"
 )
 
@@ -21,6 +22,9 @@ type TimetableRepository interface{
 	RetrieveAllCohorts(ctx context.Context,uniId uuid.UUID)([]sqlc.Cohort,error)
 	RetrieveTotalLecturers(ctx context.Context, uniId uuid.NullUUID)([]sqlc.RetrieveTotalLecturersRow,error)
 	RetrieveCohortsForAllCourses(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveCohortsForAllCoursesRow,error)
+	CreateACandidateTimeTable(ctx context.Context, candidateData sqlc.CreateCandidateParams, sessionPlacements []types.CustomSessionPlacement)error
+	DeprecateLatestCandidate(ctx context.Context,uniId uuid.UUID)error
+	RestoreCurrentCandidate(ctx context.Context,uniId uuid.UUID)error
 
 }
 type timetableRepository struct {
@@ -28,6 +32,8 @@ type timetableRepository struct {
 	lq *queries.LecturerQueries
 	cohq *queries.CohortQueries
 	cq *queries.CoursesQueries
+	tmtq *queries.TimeTableQueries
+	store sqlc.Store
 }
 
 
@@ -94,4 +100,38 @@ func (ttrp *timetableRepository) RetrieveTotalCohortCourses(ctx context.Context,
 
 func (ttrp *timetableRepository) RetrieveCohortsForAllCourses(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveCohortsForAllCoursesRow,error){
 	return ttrp.cohq.RetrieveTotalCohortCourses(ctx,uniId)
+}
+
+func (ttrp *timetableRepository) CreateACandidateTimeTable(ctx context.Context, candidateData sqlc.CreateCandidateParams, sessionPlacements []types.CustomSessionPlacement)error{
+	return ttrp.store.ExecTx(ctx,func(q *sqlc.Queries)error{
+		val,createCandidateErr := q.CreateCandidate(ctx,candidateData)
+		if createCandidateErr != nil{
+			return createCandidateErr
+		}
+		for _,placement := range sessionPlacements{
+			_,createSessionPlacementsErr := q.CreateSessionPlacements(ctx,sqlc.CreateSessionPlacementsParams{
+				CandidateID: val.ID,
+				SessionIdx: placement.SessionIdx,
+				CourseID: placement.CourseId,
+				VenueID: placement.VenueId,
+				Day: placement.Day,
+				SessionTime: placement.SessionTime,
+				UniversityID: placement.UniversityId,
+
+			})
+			if createSessionPlacementsErr != nil{
+				return createSessionPlacementsErr
+			}
+		}
+		return nil
+	})
+
+}
+
+func (ttrp *timetableRepository) DeprecateLatestCandidate(ctx context.Context,uniId uuid.UUID)error{
+	return ttrp.tmtq.DeprecateLatestCandidate(ctx,uniId)
+}
+
+func (ttrp *timetableRepository) RestoreCurrentCandidate(ctx context.Context,uniId uuid.UUID)error{
+	return ttrp.tmtq.RestoreCurrentCandidate(ctx,uniId)
 }

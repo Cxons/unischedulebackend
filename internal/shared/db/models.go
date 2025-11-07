@@ -11,6 +11,15 @@ import (
 	"github.com/google/uuid"
 )
 
+type Candidate struct {
+	ID              uuid.UUID
+	Fitness         float64
+	UniversityID    uuid.UUID
+	CandidateStatus string
+	CreatedAt       sql.NullTime
+	UpdatedAt       sql.NullTime
+}
+
 type Cohort struct {
 	CohortID           uuid.UUID
 	CohortName         string
@@ -194,6 +203,19 @@ type RefreshToken struct {
 	CreatedAt    sql.NullTime
 	UpdatedAt    sql.NullTime
 	IsRevoked    sql.NullBool
+}
+
+type SessionPlacement struct {
+	ID           uuid.UUID
+	CandidateID  uuid.UUID
+	SessionIdx   int32
+	CourseID     uuid.UUID
+	VenueID      uuid.UUID
+	Day          string
+	SessionTime  time.Time
+	UniversityID uuid.UUID
+	CreatedAt    sql.NullTime
+	UpdatedAt    sql.NullTime
 }
 
 type Student struct {
