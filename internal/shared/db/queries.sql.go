@@ -385,25 +385,35 @@ func (q *Queries) CountVenuesforFaculty(ctx context.Context, arg CountVenuesforF
 
 const createCandidate = `-- name: CreateCandidate :one
 INSERT INTO candidates(
-    fitness,university_id,candidate_status
-)VALUES($1,$2,$3)
-RETURNING id, fitness, university_id, candidate_status, created_at, updated_at
+    fitness,university_id,candidate_status,start_of_day,end_of_day
+)VALUES($1,$2,$3,$4,$5)
+RETURNING id, fitness, university_id, candidate_status, start_of_day, end_of_day, created_at, updated_at
 `
 
 type CreateCandidateParams struct {
 	Fitness         float64
 	UniversityID    uuid.UUID
 	CandidateStatus string
+	StartOfDay      time.Time
+	EndOfDay        time.Time
 }
 
 func (q *Queries) CreateCandidate(ctx context.Context, arg CreateCandidateParams) (Candidate, error) {
-	row := q.db.QueryRowContext(ctx, createCandidate, arg.Fitness, arg.UniversityID, arg.CandidateStatus)
+	row := q.db.QueryRowContext(ctx, createCandidate,
+		arg.Fitness,
+		arg.UniversityID,
+		arg.CandidateStatus,
+		arg.StartOfDay,
+		arg.EndOfDay,
+	)
 	var i Candidate
 	err := row.Scan(
 		&i.ID,
 		&i.Fitness,
 		&i.UniversityID,
 		&i.CandidateStatus,
+		&i.StartOfDay,
+		&i.EndOfDay,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -446,6 +456,34 @@ func (q *Queries) CreateCohort(ctx context.Context, arg CreateCohortParams) (Coh
 		&i.CohortDepartmentID,
 		&i.CohortFacultyID,
 		&i.CohortUniversityID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createCohortCourse = `-- name: CreateCohortCourse :one
+INSERT INTO cohort_courses_offered(
+    cohort_id,course_id,university_id
+)VALUES(
+    $1,$2,$3
+)
+RETURNING cohort_id, course_id, university_id, created_at, updated_at
+`
+
+type CreateCohortCourseParams struct {
+	CohortID     uuid.UUID
+	CourseID     uuid.UUID
+	UniversityID uuid.UUID
+}
+
+func (q *Queries) CreateCohortCourse(ctx context.Context, arg CreateCohortCourseParams) (CohortCoursesOffered, error) {
+	row := q.db.QueryRowContext(ctx, createCohortCourse, arg.CohortID, arg.CourseID, arg.UniversityID)
+	var i CohortCoursesOffered
+	err := row.Scan(
+		&i.CohortID,
+		&i.CourseID,
+		&i.UniversityID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -851,6 +889,121 @@ WHERE c.id = (
 func (q *Queries) DeprecateLatestCandidate(ctx context.Context, universityID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deprecateLatestCandidate, universityID)
 	return err
+}
+
+const fetchCoursesForACohort = `-- name: FetchCoursesForACohort :many
+SELECT
+    cohort_id
+FROM cohort_courses_offered
+WHERE cohort_id = $1
+AND university_id = $2
+`
+
+type FetchCoursesForACohortParams struct {
+	CohortID     uuid.UUID
+	UniversityID uuid.UUID
+}
+
+func (q *Queries) FetchCoursesForACohort(ctx context.Context, arg FetchCoursesForACohortParams) ([]uuid.UUID, error) {
+	rows, err := q.db.QueryContext(ctx, fetchCoursesForACohort, arg.CohortID, arg.UniversityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var cohort_id uuid.UUID
+		if err := rows.Scan(&cohort_id); err != nil {
+			return nil, err
+		}
+		items = append(items, cohort_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCohortSessionsInCurrentTimetable = `-- name: GetCohortSessionsInCurrentTimetable :many
+SELECT 
+    sp.id AS session_id,
+    sp.session_idx,
+    sp.course_id,
+    sp.venue_id,
+    sp.day,
+    sp.session_time,
+    sp.university_id,
+    c.fitness,
+    c.candidate_status,
+    c.start_of_day,
+    c.end_of_day
+FROM session_placements sp
+JOIN candidates c 
+    ON sp.candidate_id = c.id
+JOIN cohort_courses_offered cco
+    ON sp.course_id = cco.course_id
+WHERE 
+    cco.cohort_id = $1
+    AND cco.university_id = $2
+    AND c.university_id = $2
+    AND c.candidate_status = 'CURRENT'
+`
+
+type GetCohortSessionsInCurrentTimetableParams struct {
+	CohortID     uuid.UUID
+	UniversityID uuid.UUID
+}
+
+type GetCohortSessionsInCurrentTimetableRow struct {
+	SessionID       uuid.UUID
+	SessionIdx      int32
+	CourseID        uuid.UUID
+	VenueID         uuid.UUID
+	Day             string
+	SessionTime     time.Time
+	UniversityID    uuid.UUID
+	Fitness         float64
+	CandidateStatus string
+	StartOfDay      time.Time
+	EndOfDay        time.Time
+}
+
+func (q *Queries) GetCohortSessionsInCurrentTimetable(ctx context.Context, arg GetCohortSessionsInCurrentTimetableParams) ([]GetCohortSessionsInCurrentTimetableRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCohortSessionsInCurrentTimetable, arg.CohortID, arg.UniversityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCohortSessionsInCurrentTimetableRow
+	for rows.Next() {
+		var i GetCohortSessionsInCurrentTimetableRow
+		if err := rows.Scan(
+			&i.SessionID,
+			&i.SessionIdx,
+			&i.CourseID,
+			&i.VenueID,
+			&i.Day,
+			&i.SessionTime,
+			&i.UniversityID,
+			&i.Fitness,
+			&i.CandidateStatus,
+			&i.StartOfDay,
+			&i.EndOfDay,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const insertOtp = `-- name: InsertOtp :one

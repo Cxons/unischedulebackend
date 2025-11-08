@@ -63,3 +63,16 @@ func (cq *CoursesQueries) RetrieveAllCourses(ctx context.Context, uniId uuid.UUI
 func (cq *CoursesQueries) RetrieveAllCoursesAndVenues(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveAllCoursesAndTheirVenueIdsRow,error){
 	return cq.q.RetrieveAllCoursesAndTheirVenueIds(ctx,uniId)
 }
+
+func (cq *CoursesQueries) CreateCohortCourse(ctx context.Context,params sqlc.CreateCohortCourseParams)(sqlc.CohortCoursesOffered,error){
+	return cq.q.CreateCohortCourse(ctx,params)
+}
+
+
+func (cq *CoursesQueries) FetchCoursesForACohort(ctx context.Context, params sqlc.FetchCoursesForACohortParams)([]uuid.UUID,error){
+	return cq.q.FetchCoursesForACohort(ctx,params)
+}
+
+func (cq *CoursesQueries) FetchSessionsForACohort(ctx context.Context,params sqlc.GetCohortSessionsInCurrentTimetableParams)([]sqlc.GetCohortSessionsInCurrentTimetableRow,error){
+	return cq.q.GetCohortSessionsInCurrentTimetable(ctx,params)
+}

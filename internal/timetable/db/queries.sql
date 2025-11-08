@@ -126,8 +126,8 @@ WHERE university_id = $1;
 
 -- name: CreateCandidate :one
 INSERT INTO candidates(
-    fitness,university_id,candidate_status
-)VALUES($1,$2,$3)
+    fitness,university_id,candidate_status,start_of_day,end_of_day
+)VALUES($1,$2,$3,$4,$5)
 RETURNING *;
 
 
@@ -160,6 +160,31 @@ WHERE c.id = (
   ORDER BY created_at DESC
   LIMIT 1
 );
+
+
+-- name: GetCohortSessionsInCurrentTimetable :many
+SELECT 
+    sp.id AS session_id,
+    sp.session_idx,
+    sp.course_id,
+    sp.venue_id,
+    sp.day,
+    sp.session_time,
+    sp.university_id,
+    c.fitness,
+    c.candidate_status,
+    c.start_of_day,
+    c.end_of_day
+FROM session_placements sp
+JOIN candidates c 
+    ON sp.candidate_id = c.id
+JOIN cohort_courses_offered cco
+    ON sp.course_id = cco.course_id
+WHERE 
+    cco.cohort_id = $1
+    AND cco.university_id = $2
+    AND c.university_id = $2
+    AND c.candidate_status = 'CURRENT';
 
 
 -- -- name: UpdateOtherCandidateStatus :one

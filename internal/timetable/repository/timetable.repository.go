@@ -25,6 +25,7 @@ type TimetableRepository interface{
 	CreateACandidateTimeTable(ctx context.Context, candidateData sqlc.CreateCandidateParams, sessionPlacements []types.CustomSessionPlacement)error
 	DeprecateLatestCandidate(ctx context.Context,uniId uuid.UUID)error
 	RestoreCurrentCandidate(ctx context.Context,uniId uuid.UUID)error
+	FetchSessionsForACohort(ctx context.Context,params sqlc.GetCohortSessionsInCurrentTimetableParams)([]sqlc.GetCohortSessionsInCurrentTimetableRow,error)
 }
 type timetableRepository struct {
 	vq *queries.VenueQueries
@@ -133,4 +134,8 @@ func (ttrp *timetableRepository) DeprecateLatestCandidate(ctx context.Context,un
 
 func (ttrp *timetableRepository) RestoreCurrentCandidate(ctx context.Context,uniId uuid.UUID)error{
 	return ttrp.tmtq.RestoreCurrentCandidate(ctx,uniId)
+}
+
+func (ttrp *timetableRepository) FetchSessionsForACohort(ctx context.Context,params sqlc.GetCohortSessionsInCurrentTimetableParams)([]sqlc.GetCohortSessionsInCurrentTimetableRow,error){
+	return ttrp.cq.FetchSessionsForACohort(ctx,params)
 }

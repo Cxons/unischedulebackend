@@ -82,3 +82,21 @@ func(cq *courseRepository) SetCourseLecturers(ctx context.Context,param sqlc.Set
 func (cq *courseRepository) UpdateCourseLecturers(ctx context.Context,param sqlc.UpdateCourseLecturersParams)(sqlc.CoursesLecturer,error){
 	return cq.cq.UpdateCourseLecturers(ctx,param)
 }
+
+
+func (cq *courseRepository) SetCoursesForACohort(ctx context.Context,uniId uuid.UUID,cohortId uuid.UUID, courses[]uuid.UUID)error{
+	return cq.store.ExecTx(ctx,func(q *sqlc.Queries)error{
+		for _,v := range courses{
+			courseCohortData := sqlc.CreateCohortCourseParams{
+				CohortID: cohortId,
+				UniversityID: uniId,
+				CourseID: v,
+			}
+			_,createCohortCourseErr := q.CreateCohortCourse(ctx,courseCohortData)
+			if createCohortCourseErr != nil{
+				return createCohortCourseErr
+			}
+		}
+		return nil
+	})
+}

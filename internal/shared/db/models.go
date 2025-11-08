@@ -16,6 +16,8 @@ type Candidate struct {
 	Fitness         float64
 	UniversityID    uuid.UUID
 	CandidateStatus string
+	StartOfDay      time.Time
+	EndOfDay        time.Time
 	CreatedAt       sql.NullTime
 	UpdatedAt       sql.NullTime
 }

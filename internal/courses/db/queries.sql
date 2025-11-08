@@ -101,3 +101,18 @@ SET
 WHERE course_id = $2 AND lecturer_id = $3
 RETURNING *;
 
+-- name: CreateCohortCourse :one
+INSERT INTO cohort_courses_offered(
+    cohort_id,course_id,university_id
+)VALUES(
+    $1,$2,$3
+)
+RETURNING *;
+
+
+-- name: FetchCoursesForACohort :many
+SELECT
+    cohort_id
+FROM cohort_courses_offered
+WHERE cohort_id = $1
+AND university_id = $2;
