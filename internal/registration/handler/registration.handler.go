@@ -97,7 +97,7 @@ func (rh *RegHandler) UpdateAdmin(res http.ResponseWriter, req *http.Request){
 func (rh *RegHandler) CreateUniversity(res http.ResponseWriter, req *http.Request){
 	var body regDto.CreateUniversityDto
 
-	utils.HandleBodyParsing(req,res,body)
+	utils.HandleBodyParsing(req,res,&body)
 	resp,errMsg,err := rh.RegService.CreateUniversity(ctx,body)
 
 	// if there is no error then set the cookie
@@ -107,8 +107,8 @@ func (rh *RegHandler) CreateUniversity(res http.ResponseWriter, req *http.Reques
 			Value: resp.Data.(sqlc.University).UniversityID.String(),
 			Path: "/",
 			HttpOnly: true,
-			Secure: utils.IsSecure(),
-			SameSite: http.SameSiteNoneMode,
+			Secure: false,
+			SameSite: http.SameSiteLaxMode,
 			Expires: time.Now().AddDate(10, 0, 0),
 	}
 		http.SetCookie(res,cookie)
@@ -141,8 +141,8 @@ func (rh *RegHandler) RequestDeanConfirmation(res http.ResponseWriter, req *http
 			Value: resp.Data.(sqlc.DeanWaitingList).WaitID.String(),
 			Path: "/",
 			HttpOnly: true,
-			Secure: utils.IsSecure(),
-			SameSite: http.SameSiteNoneMode,
+			Secure: false,
+			SameSite: http.SameSiteLaxMode,
 			Expires: time.Now().AddDate(10, 0, 0),
 	}
 	http.SetCookie(res,cookie)
@@ -194,8 +194,8 @@ func (rh *RegHandler) CreateFaculty(res http.ResponseWriter,req *http.Request){
 			Value: string(cookieJsonData),
 			Path: "/",
 			HttpOnly: true,
-			Secure: utils.IsSecure(),
-			SameSite: http.SameSiteNoneMode,
+			Secure: false,
+			SameSite: http.SameSiteLaxMode,
 			Expires: time.Now().AddDate(10, 0, 0),
 	}
 		http.SetCookie(res,cookie)
@@ -240,8 +240,8 @@ func (rh *RegHandler) RequestHodConfirmation(res http.ResponseWriter, req *http.
 			Value: resp.Data.(sqlc.HodWaitingList).WaitID.String(),
 			Path: "/",
 			HttpOnly: true,
-			Secure: utils.IsSecure(),
-			SameSite: http.SameSiteNoneMode,
+			Secure:false,
+			SameSite: http.SameSiteLaxMode,
 			Expires: time.Now().AddDate(10, 0, 0),
 	}
 	http.SetCookie(res,cookie)
@@ -296,8 +296,8 @@ func (rh *RegHandler) CreateDeparment(res http.ResponseWriter, req *http.Request
 			Value: string(cookieJsonData),
 			Path: "/",
 			HttpOnly: true,
-			Secure: utils.IsSecure(),
-			SameSite: http.SameSiteNoneMode,
+			Secure: false,
+			SameSite: http.SameSiteLaxMode,
 			Expires: time.Now().AddDate(10, 0, 0),
 	}
 		http.SetCookie(res,cookie)
@@ -344,8 +344,8 @@ func (rh *RegHandler) RequestLecturerConfirmation(res http.ResponseWriter, req *
 			Value: resp.Data.(sqlc.LecturerWaitingList).WaitID.String(),
 			Path: "/",
 			HttpOnly: true,
-			Secure: utils.IsSecure(),
-			SameSite: http.SameSiteNoneMode,
+			Secure: false,
+			SameSite: http.SameSiteLaxMode,
 			Expires: time.Now().AddDate(10, 0, 0),
 	}
 	http.SetCookie(res,cookie)
@@ -391,8 +391,8 @@ func (rh *RegHandler) CreateDean(res http.ResponseWriter, req *http.Request){
 			Value: resp.Data.(sqlc.CurrentDean).DeanID.String(),
 			Path: "/",
 			HttpOnly: true,
-			Secure: utils.IsSecure(),
-			SameSite: http.SameSiteNoneMode,
+			Secure: false,
+			SameSite: http.SameSiteLaxMode,
 			Expires: expires,
 	}
 		http.SetCookie(res,cookie)
@@ -417,8 +417,8 @@ func (rh *RegHandler) CreateHod(res http.ResponseWriter, req *http.Request){
 			Value: resp.Data.(sqlc.CurrentHod).HodID.String(),
 			Path: "/",
 			HttpOnly: true,
-			Secure: utils.IsSecure(),
-			SameSite: http.SameSiteNoneMode,
+			Secure: false,
+			SameSite: http.SameSiteLaxMode,
 			Expires: expires,
 	}
 		http.SetCookie(res,cookie)

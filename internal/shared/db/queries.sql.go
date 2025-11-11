@@ -1006,6 +1006,89 @@ func (q *Queries) GetCohortSessionsInCurrentTimetable(ctx context.Context, arg G
 	return items, nil
 }
 
+const getStudentTimetableSessions = `-- name: GetStudentTimetableSessions :many
+SELECT 
+    sp.id AS session_id,
+    sp.session_idx,
+    sp.course_id,
+    sp.venue_id,
+    sp.day,
+    sp.session_time,
+    sp.university_id,
+    c.fitness,
+    c.candidate_status,
+    c.start_of_day,
+    c.end_of_day
+FROM session_placements sp
+JOIN candidates c 
+    ON sp.candidate_id = c.id
+JOIN student_courses_offered sco 
+    ON sp.course_id = sco.course_id
+JOIN students s 
+    ON sco.student_id = s.student_id
+WHERE s.student_id = $1
+  AND c.university_id = s.university_id
+  AND c.candidate_status = 'CURRENT'
+ORDER BY 
+    CASE sp.day
+        WHEN 'Monday' THEN 1
+        WHEN 'Tuesday' THEN 2
+        WHEN 'Wednesday' THEN 3
+        WHEN 'Thursday' THEN 4
+        WHEN 'Friday' THEN 5
+    END,
+    sp.session_time ASC
+`
+
+type GetStudentTimetableSessionsRow struct {
+	SessionID       uuid.UUID
+	SessionIdx      int32
+	CourseID        uuid.UUID
+	VenueID         uuid.UUID
+	Day             string
+	SessionTime     time.Time
+	UniversityID    uuid.UUID
+	Fitness         float64
+	CandidateStatus string
+	StartOfDay      time.Time
+	EndOfDay        time.Time
+}
+
+func (q *Queries) GetStudentTimetableSessions(ctx context.Context, studentID uuid.UUID) ([]GetStudentTimetableSessionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getStudentTimetableSessions, studentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetStudentTimetableSessionsRow
+	for rows.Next() {
+		var i GetStudentTimetableSessionsRow
+		if err := rows.Scan(
+			&i.SessionID,
+			&i.SessionIdx,
+			&i.CourseID,
+			&i.VenueID,
+			&i.Day,
+			&i.SessionTime,
+			&i.UniversityID,
+			&i.Fitness,
+			&i.CandidateStatus,
+			&i.StartOfDay,
+			&i.EndOfDay,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertOtp = `-- name: InsertOtp :one
 INSERT INTO otps(
     otp,expires_at,email,user_type
@@ -1164,6 +1247,30 @@ func (q *Queries) RegisterUniversityAdmin(ctx context.Context, arg RegisterUnive
 		&i.AdminStaffCard,
 		&i.AdminNumber,
 		&i.UniversityID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const removeStudentCourse = `-- name: RemoveStudentCourse :one
+DELETE FROM student_courses_offered
+WHERE student_id = $1
+AND course_id = $2
+RETURNING student_id, course_id, created_at, updated_at
+`
+
+type RemoveStudentCourseParams struct {
+	StudentID uuid.UUID
+	CourseID  uuid.UUID
+}
+
+func (q *Queries) RemoveStudentCourse(ctx context.Context, arg RemoveStudentCourseParams) (StudentCoursesOffered, error) {
+	row := q.db.QueryRowContext(ctx, removeStudentCourse, arg.StudentID, arg.CourseID)
+	var i StudentCoursesOffered
+	err := row.Scan(
+		&i.StudentID,
+		&i.CourseID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

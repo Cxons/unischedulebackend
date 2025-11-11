@@ -34,3 +34,24 @@ func JwtMiddleware()func(http.Handler)http.Handler{
 		})
 	}
 } 
+
+func CORSMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // Allow your frontend origin
+        w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+        // Allow credentials like cookies
+        w.Header().Set("Access-Control-Allow-Credentials", "true")
+        // Allowed headers
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        // Allowed methods
+        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+
+        // Handle preflight requests
+        if r.Method == "OPTIONS" {
+            w.WriteHeader(http.StatusOK)
+            return
+        }
+
+        next.ServeHTTP(w, r)
+    })
+}

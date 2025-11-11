@@ -10,29 +10,46 @@ import (
 )
 
 
+func HandleAuthResponse(resp dto.ResponseDto, err error, errMsg string, res http.ResponseWriter) {
+    res.Header().Set("Content-Type", "application/json") // always JSON
 
+    if err != nil {
+        // Map status message to HTTP code
+        code := status.RetrieveCodeFromStatusMessage(errMsg)
+        if code == 0 {
+            code = status.InternalServerError.Code
+            errMsg = status.InternalServerError.Message
+        } else if errMsg == "" {
+            errMsg = err.Error()
+        }
 
-func HandleAuthResponse(resp dto.ResponseDto,err error,errMsg string, res http.ResponseWriter){
-	 if err != nil{
-		code := status.RetrieveCodeFromStatusMessage(errMsg)
-		if code == 0 {
-			http.Error(res,status.InternalServerError.Message,status.InternalServerError.Code)
-			return
-		}
-		http.Error(res,err.Error(),code)
-		return
-	 }
-	// res.WriteHeader(http.StatusCreated)
-	if err = json.NewEncoder(res).Encode(resp); err!= nil{
-    http.Error(res, status.InternalServerError.Message, status.InternalServerError.Code)
-    return
+        // Return JSON error
+        res.WriteHeader(code)
+        json.NewEncoder(res).Encode(map[string]interface{}{
+            "message": errMsg,
+            "error":   err.Error(),
+        })
+        return
+    }
+
+    // Success response
+    res.WriteHeader(http.StatusCreated)
+    if err := json.NewEncoder(res).Encode(resp); err != nil {
+        // fallback in case encoding fails
+        res.WriteHeader(status.InternalServerError.Code)
+        json.NewEncoder(res).Encode(map[string]interface{}{
+            "message": status.InternalServerError.Message,
+            "error":   err.Error(),
+        })
+        return
+    }
 }
-}
+
 
 
 
 func HandleBodyParsing(req *http.Request, res http.ResponseWriter, body interface{}){
-	if err:= json.NewDecoder(req.Body).Decode(&body); err!=nil{
+	if err:= json.NewDecoder(req.Body).Decode(body); err!=nil{
 		http.Error(res,"Invalid Request Body",status.BadRequest.Code)
 		return
 	}

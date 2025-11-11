@@ -32,6 +32,6 @@ func NewDatabase(connStr string) (*Db, error) {
     }, nil
 }
 
-func (db *Db) CloseConnection() {
-    db.DB.Close()
+func (db *Db) CloseConnection()error{
+   return  db.DB.Close()
 }

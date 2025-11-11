@@ -26,6 +26,7 @@ type TimetableRepository interface{
 	DeprecateLatestCandidate(ctx context.Context,uniId uuid.UUID)error
 	RestoreCurrentCandidate(ctx context.Context,uniId uuid.UUID)error
 	FetchSessionsForACohort(ctx context.Context,params sqlc.GetCohortSessionsInCurrentTimetableParams)([]sqlc.GetCohortSessionsInCurrentTimetableRow,error)
+	FetchSessionsForAStudent(ctx context.Context,studentId uuid.UUID)([]sqlc.GetStudentTimetableSessionsRow,error)
 }
 type timetableRepository struct {
 	vq *queries.VenueQueries
@@ -55,7 +56,6 @@ func (ttrp *timetableRepository) CountNumVenues(ctx context.Context,uniId uuid.U
 
 func (ttrp *timetableRepository) CountNumLecturers(ctx context.Context, uniId uuid.NullUUID)(int64,error){
 	return ttrp.lq.RetrieveTotalLecturersCount(ctx,uniId)
-
 }
 
 func (ttrp *timetableRepository) CountNumCohorts(ctx context.Context,uniId uuid.UUID)(int64,error){
@@ -117,7 +117,6 @@ func (ttrp *timetableRepository) CreateACandidateTimeTable(ctx context.Context, 
 				Day: placement.Day,
 				SessionTime: placement.SessionTime,
 				UniversityID: placement.UniversityId,
-
 			})
 			if createSessionPlacementsErr != nil{
 				return createSessionPlacementsErr
@@ -125,7 +124,6 @@ func (ttrp *timetableRepository) CreateACandidateTimeTable(ctx context.Context, 
 		}
 		return nil
 	})
-
 }
 
 func (ttrp *timetableRepository) DeprecateLatestCandidate(ctx context.Context,uniId uuid.UUID)error{
@@ -138,4 +136,8 @@ func (ttrp *timetableRepository) RestoreCurrentCandidate(ctx context.Context,uni
 
 func (ttrp *timetableRepository) FetchSessionsForACohort(ctx context.Context,params sqlc.GetCohortSessionsInCurrentTimetableParams)([]sqlc.GetCohortSessionsInCurrentTimetableRow,error){
 	return ttrp.cq.FetchSessionsForACohort(ctx,params)
+}
+
+func (ttrp *timetableRepository) FetchSessionsForAStudent(ctx context.Context,studentId uuid.UUID)([]sqlc.GetStudentTimetableSessionsRow,error){
+	return ttrp.cq.FetchSessionsForAStudent(ctx,studentId)
 }

@@ -42,6 +42,12 @@ type TimetableSession struct {
 	VenueName  string 
 }
 
+type TimeTableService interface{
+	CreateATimeTable(ctx context.Context,startOfDay time.Time, endOfDay time.Time,uniId uuid.UUID)(timeTableResponse,string,error)
+	RetrieveTimetableForACohort(ctx context.Context,cohortId uuid.UUID,uniId uuid.UUID)(timeTableResponse,string,error)
+	RetrieveTimetableForAStudent(ctx context.Context,studentId uuid.UUID,uniId uuid.UUID,) (timeTableResponse, string, error) 
+}
+
 
 func NewTimetableService(repo timetableRepository)*timeTableService{
 	return &timeTableService{
@@ -82,7 +88,6 @@ func (tts *timeTableService) CreateATimeTable(ctx context.Context,startOfDay tim
 	slotsPerDay := int(totalDuration/slotDuration)
 	days := []string{"Monday","Tuesday","Wednesday","Thursday","Friday"}
 	slotMap := BuildSlotMap(slotsPerDay,days,startOfDay,slotDuration)
-
 
 
   precomputed,_,venueMap,_,coursesMap := tts.computed.ComputePreComputed(ctx,uniId,slotsPerDay,startOfDay,days,slotDuration)
@@ -147,13 +152,13 @@ func (tts *timeTableService) CreateATimeTable(ctx context.Context,startOfDay tim
 }
 
 
-var dayOrder = map[string]int{
-	"Monday":    1,
-	"Tuesday":   2,
-	"Wednesday": 3,
-	"Thursday":  4,
-	"Friday":    5,
-}
+// var dayOrder = map[string]int{
+// 	"Monday":    1,
+// 	"Tuesday":   2,
+// 	"Wednesday": 3,
+// 	"Thursday":  4,
+// 	"Friday":    5,
+// }
 
 
 func PrepareTimetableJSON(
@@ -227,7 +232,79 @@ func PrepareTimetableJSON(
 }
 
 
-func (tts *timeTableService) RetrieveTimetableForACohort(ctx context.Context,cohortId uuid.UUID,uniId uuid.UUID){
+func PrepareStudentTimetableJSON(
+	sessions []sqlc.GetStudentTimetableSessionsRow,
+	courseNameMap map[uuid.UUID]string,
+	venueNameMap map[uuid.UUID]string,
+	startOfDay time.Time,
+	endOfDay time.Time,
+	slotDuration time.Duration,
+) map[string][]TimetableSession {
+
+	// Define day order
+	dayOrder := map[string]int{
+		"Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3, "Friday": 4,
+	}
+
+	// Sort sessions by day and time
+	sort.Slice(sessions, func(i, j int) bool {
+		dayI := dayOrder[sessions[i].Day]
+		dayJ := dayOrder[sessions[j].Day]
+
+		if dayI == dayJ {
+			return sessions[i].SessionTime.Before(sessions[j].SessionTime)
+		}
+		return dayI < dayJ
+	})
+
+	// Precompute all time slots for the day
+	var slots []string
+	for t := startOfDay; t.Before(endOfDay); t = t.Add(slotDuration) {
+		slots = append(slots, t.Format("15:04"))
+	}
+
+	// Build a quick lookup for sessions
+	sessionLookup := make(map[string]map[string]TimetableSession)
+	for _, s := range sessions {
+		timeStr := s.SessionTime.Format("15:04")
+
+		if _, exists := sessionLookup[s.Day]; !exists {
+			sessionLookup[s.Day] = make(map[string]TimetableSession)
+		}
+
+		sessionLookup[s.Day][timeStr] = TimetableSession{
+			Time:       timeStr,
+			CourseID:   s.CourseID,
+			VenueID:    s.VenueID,
+			SessionID:  s.SessionID,
+			CourseName: courseNameMap[s.CourseID],
+			VenueName:  venueNameMap[s.VenueID],
+		}
+	}
+
+	// Fill grouped timetable with all days and slots
+	grouped := make(map[string][]TimetableSession)
+	for _, day := range []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"} {
+		for _, slot := range slots {
+			if session, exists := sessionLookup[day][slot]; exists {
+				grouped[day] = append(grouped[day], session)
+			} else {
+				// Empty slot
+				grouped[day] = append(grouped[day], TimetableSession{
+					Time:       slot,
+					CourseName: "",
+					VenueName:  "",
+				})
+			}
+		}
+	}
+
+	return grouped
+}
+
+
+
+func (tts *timeTableService) RetrieveTimetableForACohort(ctx context.Context,cohortId uuid.UUID,uniId uuid.UUID)(timeTableResponse,string,error){
 	timetable,err := tts.repo.FetchSessionsForACohort(ctx,sqlc.GetCohortSessionsInCurrentTimetableParams{
 		CohortID:cohortId,
 		UniversityID:uniId,
@@ -236,7 +313,16 @@ func (tts *timeTableService) RetrieveTimetableForACohort(ctx context.Context,coh
 		tts.logger.Error("error retrieving timetable for cohort","err:",err)
 	}
 	courses,retrieveAllCourseErr := tts.repo.RetrieveAllCourses(ctx,uniId)
+
+	if retrieveAllCourseErr != nil{
+		tts.logger.Error("error retrieving all courses","err:",err)
+		return timeTableResponse{},status.InternalServerError.Message,err
+	}
 	venues, retrieveAllVenuesErr := tts.repo.RetrieveAllVenues(ctx,uniId)
+	if retrieveAllVenuesErr != nil{
+		tts.logger.Error("error retrieving all venues","err:",err)
+		return timeTableResponse{},status.InternalServerError.Message,err
+	}
 
 	courseNameMap := make(map[uuid.UUID]string,0)
 	venuesNameMap := make(map[uuid.UUID]string,0)
@@ -247,10 +333,73 @@ func (tts *timeTableService) RetrieveTimetableForACohort(ctx context.Context,coh
 		venuesNameMap[val.VenueID] = val.VenueName
 	}
 	formattedTimetable := PrepareTimetableJSON(timetable,courseNameMap,venuesNameMap,timetable[0].StartOfDay,timetable[0].EndOfDay,time.Hour)
-	
-
+	return timeTableResponse{
+		Message: "Cohort Timetable",
+		Data: formattedTimetable,
+		StatusCode: status.OK.Code,
+		StatusCodeMessage: status.OK.Message,
+	},status.OK.Message,nil
 
 }
+
+
+func (tts *timeTableService) RetrieveTimetableForAStudent(
+	ctx context.Context,
+	studentId uuid.UUID,
+	uniId uuid.UUID,
+) (timeTableResponse, string, error) {
+	timetable, err := tts.repo.FetchSessionsForAStudent(ctx,studentId)
+	if err != nil {
+		tts.logger.Error("error retrieving timetable for student", "err", err)
+		return timeTableResponse{}, status.InternalServerError.Message, err
+	}
+
+	if len(timetable) == 0 {
+		return timeTableResponse{
+			Message:           "No timetable found for this student",
+			StatusCode:        status.NotFound.Code,
+			StatusCodeMessage: status.NotFound.Message,
+		}, status.NotFound.Message, nil
+	}
+
+	courses, retrieveAllCourseErr := tts.repo.RetrieveAllCourses(ctx, uniId)
+	if retrieveAllCourseErr != nil {
+		tts.logger.Error("error retrieving all courses", "err", retrieveAllCourseErr)
+		return timeTableResponse{}, status.InternalServerError.Message, retrieveAllCourseErr
+	}
+
+	venues, retrieveAllVenuesErr := tts.repo.RetrieveAllVenues(ctx, uniId)
+	if retrieveAllVenuesErr != nil {
+		tts.logger.Error("error retrieving all venues", "err", retrieveAllVenuesErr)
+		return timeTableResponse{}, status.InternalServerError.Message, retrieveAllVenuesErr
+	}
+
+	courseNameMap := make(map[uuid.UUID]string)
+	venuesNameMap := make(map[uuid.UUID]string)
+	for _, val := range courses {
+		courseNameMap[val.CourseID] = val.CourseTitle
+	}
+	for _, val := range venues {
+		venuesNameMap[val.VenueID] = val.VenueName
+	}
+
+	formattedTimetable := PrepareStudentTimetableJSON(
+		timetable,
+		courseNameMap,
+		venuesNameMap,
+		timetable[0].StartOfDay,
+		timetable[0].EndOfDay,
+		time.Hour,
+	)
+
+	return timeTableResponse{
+		Message:           "Student Timetable",
+		Data:              formattedTimetable,
+		StatusCode:        status.OK.Code,
+		StatusCodeMessage: status.OK.Message,
+	}, status.OK.Message, nil
+}
+
 
 
 

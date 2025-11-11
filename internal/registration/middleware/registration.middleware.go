@@ -22,6 +22,7 @@ func AdminMiddleware(regService service.RegService)func(http.Handler) http.Handl
 	return func(next http.Handler) http.Handler{
 		return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request){
 			ctx := req.Context()
+		
 			claims := ctx.Value(constants.UserInfoKey)
 			  if claims == nil {
                 http.Error(res, "Unauthorized", status.Unauthorized.Code)

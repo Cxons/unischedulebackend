@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strings"
 
 	regDto "github.com/Cxons/unischedulebackend/internal/registration/dto"
 	"github.com/Cxons/unischedulebackend/internal/registration/repository"
@@ -97,31 +98,39 @@ func (rs *RegServiceStruct) UpdateAdmin(ctx context.Context,adminInfo UpdateAdmi
 	},status.Created.Message,nil
 }
 
-func (rs *RegServiceStruct) CreateUniversity(ctx context.Context, uniInfo CreateUniversityDto)(RegResponse,string,error){
+func (rs *RegServiceStruct) CreateUniversity(ctx context.Context, uniInfo CreateUniversityDto) (RegResponse, string, error) {
 	university := sqlc.CreateUniversityParams{
-		UniversityName: uniInfo.UniName,
-		UniversityLogo: utils.StringToNullString(uniInfo.UniLogo),
-		UniversityAbbr: utils.StringToNullString(uniInfo.UniAbbr),
-		Email: uniInfo.UniEmail,
-		Website: utils.StringToNullString(uniInfo.UniWebsite),
-		PhoneNumber: uniInfo.UniPhoneNumber,
-		CurrentSession: utils.StringToNullString(uniInfo.CurrentSession),
+		UniversityName:  uniInfo.UniName,
+		UniversityLogo:  utils.StringToNullString(uniInfo.UniLogo),
+		UniversityAbbr:  utils.StringToNullString(uniInfo.UniAbbr),
+		Email:           uniInfo.UniEmail,
+		Website:         utils.StringToNullString(uniInfo.UniWebsite),
+		PhoneNumber:     uniInfo.UniPhoneNumber,
+		CurrentSession:  utils.StringToNullString(uniInfo.CurrentSession),
 	}
 
-	uni,err := rs.regRepo.CreateUniversity(ctx,university)
-	
+	rs.logger.Info("university", uniInfo)
+
+	uni, err := rs.regRepo.CreateUniversity(ctx, university)
 	if err != nil {
-		rs.logger.Error("Error creating university","err:",err)
-		return RegResponse{},status.InternalServerError.Message,err
+		rs.logger.Error("Error creating university", "err:", err)
+
+		// Check for "Only one university creation allowed" error
+		if strings.Contains(err.Error(), "Only one university creation allowed") {
+			return RegResponse{}, status.Forbidden.Message, errors.New("Only one university creation allowed")
+		}
+
+		return RegResponse{}, status.InternalServerError.Message, err
 	}
 
 	return RegResponse{
-		Message: "University created successfully",
-		Data:uni,
-		StatusCode: status.Created.Code,
+		Message:           "University created successfully",
+		Data:              uni,
+		StatusCode:        status.Created.Code,
 		StatusCodeMessage: status.Created.Message,
-	},status.Created.Message,nil
+	}, status.Created.Message, nil
 }
+
 
 
 

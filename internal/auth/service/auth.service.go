@@ -77,7 +77,8 @@ func (s *authService) Register(ctx context.Context,user RegisterDto)(AuthRespons
 		}
 		_,_,err = s.SendOtp(ctx,user.Email,user.Role)
 		if err != nil {
-			return AuthResponse{}, status.InternalServerError.Message, err
+			// return AuthResponse{}, status.InternalServerError.Message, err
+			s.logger.Error("error sending otp","err:",err)
 		}
 		return AuthResponse{
 			Message: "Thanks for registering " + student.StudentFirstName,
@@ -96,7 +97,8 @@ func (s *authService) Register(ctx context.Context,user RegisterDto)(AuthRespons
 		}
 		_,_,err = s.SendOtp(ctx,user.Email,user.Role)
 		if err != nil {
-			return AuthResponse{}, status.InternalServerError.Message, err
+			s.logger.Error("error sending otp","err:",err)
+			// return AuthResponse{}, status.InternalServerError.Message, err
 		}
 		return AuthResponse{
 			Message: "Thanks for registering " + lecturer.LecturerFirstName,
@@ -113,9 +115,10 @@ func (s *authService) Register(ctx context.Context,user RegisterDto)(AuthRespons
 			s.logger.Error("error registering admin","err:",err)
 			return AuthResponse{},status.InternalServerError.Message,err
 		}
-		_,_,err = s.SendOtp(ctx,user.Email,user.Role)
-		if err != nil {
-			return AuthResponse{}, status.InternalServerError.Message, err
+		_,_,otpErr := s.SendOtp(ctx,user.Email,user.Role)
+		if otpErr != nil {
+			// return AuthResponse{}, status.InternalServerError.Message, err
+			s.logger.Error("error sending otp to user","err:",otpErr)
 		}
 		return AuthResponse{
 				Message: "Thanks for registering." + admin.AdminFirstName + "otp sent",
@@ -358,7 +361,7 @@ func (s *authService) SendOtp(ctx context.Context,email string, userType string)
 			Data: nil,
 			StatusCode: status.Created.Code,
 			StatusCodeMessage: status.Created.Message,
-		},"",err
+		},"",nil
 	}
 
 func (s *authService) VerifyOtp(ctx context.Context,email string,otpStr string)(AuthResponse,string,error){

@@ -136,6 +136,7 @@ CREATE TABLE lecturer_unavailability (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- on the frontend part remember to add a warning so that when a new semester arrives they can deselect those they are not offering any longer
 
 CREATE TABLE student_courses_offered(
     student_id UUID NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,

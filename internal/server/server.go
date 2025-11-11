@@ -9,6 +9,7 @@ import (
 	regHandler "github.com/Cxons/unischedulebackend/internal/registration/handler"
 	"github.com/Cxons/unischedulebackend/internal/shared/db"
 	"github.com/Cxons/unischedulebackend/pkg/caching"
+	supHandler "github.com/Cxons/unischedulebackend/pkg/supabase/handler"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -22,10 +23,11 @@ type Server struct{
 	Database *db.Db
 	Auth *authHandler.AuthHandler
 	Reg *regHandler.RegHandler
+	Supabase *supHandler.SupabaseHandler
 }
 
 
-func NewServer(cfg Config, logger *slog.Logger, cache *caching.RedisClient, db *db.Db, auth *authHandler.AuthHandler, reg *regHandler.RegHandler) *Server{
+func NewServer(cfg Config, logger *slog.Logger, cache *caching.RedisClient, db *db.Db, auth *authHandler.AuthHandler, reg *regHandler.RegHandler, supabase *supHandler.SupabaseHandler) *Server{
 	r:= chi.NewRouter();
 	srv := &http.Server{
     Addr:         ":5000",
@@ -43,6 +45,7 @@ func NewServer(cfg Config, logger *slog.Logger, cache *caching.RedisClient, db *
 		Database: db,
 		Auth: auth,
 		Reg: reg,
+		Supabase: supabase,
 	}
 }
 

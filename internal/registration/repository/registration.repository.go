@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"strconv"
+	"strings"
 
 	sqlc "github.com/Cxons/unischedulebackend/internal/shared/db"
 	"github.com/Cxons/unischedulebackend/internal/shared/db/queries"
@@ -77,8 +78,16 @@ func (rrp *regRepository) UpdateAdmin(ctx context.Context,adminInfo sqlc.UpdateA
 }
 
 
-func (rrp *regRepository) CreateUniversity(ctx context.Context, uniInfo sqlc.CreateUniversityParams)(sqlc.University,error){
-	return rrp.uq.CreateUniversities(ctx,uniInfo)
+func (rrp *regRepository) CreateUniversity(ctx context.Context, uniInfo sqlc.CreateUniversityParams) (sqlc.University, error) {
+    uni, err := rrp.uq.CreateUniversities(ctx, uniInfo)
+    if err != nil {
+        // Check for unique constraint violation on phone_number
+        if strings.Contains(err.Error(), "unique constraint") && strings.Contains(err.Error(), "phone_number") {
+            return sqlc.University{}, errors.New("Only one university creation allowed")
+        }
+        return sqlc.University{}, err
+    }
+    return uni, nil
 }
 
 func (rrp *regRepository) RetrievePendingDeans(ctx context.Context,uniId uuid.UUID)([]sqlc.DeanWaitingList,error){

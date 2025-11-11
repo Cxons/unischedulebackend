@@ -74,6 +74,18 @@ func (cq *courseRepository) SetStudentCourses(ctx context.Context,studCoursePara
 
 }
 
+func (cq *courseRepository) DeleteStudentCourse(ctx context.Context, deleteParam []sqlc.RemoveStudentCourseParams)error{
+	return cq.store.ExecTx(ctx, func(q *sqlc.Queries) error {
+		for _,val := range deleteParam{
+			_,err := q.RemoveStudentCourse(ctx,val)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 
 func(cq *courseRepository) SetCourseLecturers(ctx context.Context,param sqlc.SetCourseLecturersParams)(sqlc.CoursesLecturer,error){
 	return cq.cq.SetCourseLecturers(ctx,param)

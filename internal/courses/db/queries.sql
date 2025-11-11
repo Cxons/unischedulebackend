@@ -85,6 +85,13 @@ INSERT INTO student_courses_offered(
 RETURNING *;
 
 
+-- name: RemoveStudentCourse :one
+DELETE FROM student_courses_offered
+WHERE student_id = $1
+AND course_id = $2
+RETURNING *;
+
+
 -- name: SetCourseLecturers :one
 INSERT INTO courses_lecturers(
     course_id,lecturer_id

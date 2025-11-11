@@ -76,3 +76,7 @@ func (cq *CoursesQueries) FetchCoursesForACohort(ctx context.Context, params sql
 func (cq *CoursesQueries) FetchSessionsForACohort(ctx context.Context,params sqlc.GetCohortSessionsInCurrentTimetableParams)([]sqlc.GetCohortSessionsInCurrentTimetableRow,error){
 	return cq.q.GetCohortSessionsInCurrentTimetable(ctx,params)
 }
+
+func (cq *CoursesQueries) FetchSessionsForAStudent(ctx context.Context,studentId uuid.UUID)([]sqlc.GetStudentTimetableSessionsRow,error){
+	return cq.q.GetStudentTimetableSessions(ctx,studentId)
+}

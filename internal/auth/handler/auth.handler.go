@@ -3,6 +3,7 @@ package authHandler
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"time"
 
 	// "database/sql"
@@ -66,7 +67,7 @@ func NewAuthHandler(service service.AuthService)*AuthHandler{
 
 func (h *AuthHandler) Register(res http.ResponseWriter, req *http.Request){
 	var body service.RegisterDto;
-	utils.HandleBodyParsing(req,res,body)
+	utils.HandleBodyParsing(req,res,&body)
 	// ctx := context.Background()
 	 resp,errMsg,err := h.service.Register(ctx,body)
 	 utils.HandleAuthResponse(resp,err,errMsg,res)
@@ -76,28 +77,53 @@ func (h *AuthHandler) Register(res http.ResponseWriter, req *http.Request){
 func (h *AuthHandler) Login(res http.ResponseWriter, req *http.Request){
      var body service.LoginDto;
 	 
-	 utils.HandleBodyParsing(req,res,body)
+	 utils.HandleBodyParsing(req,res,&body)
 	// passes data into service layer for handling
 	resp,errMsg,err:= h.service.Login(ctx,body)
+	data,ok := resp.Data.(dto.LoginResponseData)
+	if !ok {
+    slog.Error("Login response data is invalid", "resp.Data", resp.Data)
+
+    res.Header().Set("Content-Type", "application/json")
+
+    // If the error corresponds to unauthorized (e.g., status.Unauthorized)
+    if errMsg == status.Unauthorized.Message {
+        res.WriteHeader(http.StatusUnauthorized)
+        json.NewEncoder(res).Encode(map[string]interface{}{
+            "message": "Invalid email or password",
+            "error":   "Unauthorized",
+        })
+        return
+    }
+
+    // Fallback for other cases
+    res.WriteHeader(http.StatusInternalServerError)
+    json.NewEncoder(res).Encode(map[string]interface{}{
+        "message": "Invalid login response data",
+        "error":   "Login response data is nil or of unexpected type",
+    })
+    return
+}
 
 	
 	if err == nil{
 		// create cookie to be added to user request
 			cookie := &http.Cookie{
 			Name: "refresh_token",
-			Value: resp.Data.(dto.LoginResponseData).RefreshToken,
+			Value: data.RefreshToken,
 			Path: "/",
 			HttpOnly: true,
-			Secure: utils.IsSecure(),
-			SameSite: http.SameSiteNoneMode,
+			Secure: false,
+			SameSite: http.SameSiteLaxMode,
 			Expires: time.Now().Add(time.Hour * 24 * 30),
 	}
+		slog.Info("cookie","key",cookie)
 		http.SetCookie(res,cookie)
 	}
 	modifiedResp := service.AuthResponse{
 		Message: resp.Message,
 		Data: dto.LoginResponseData{
-		AccessToken: resp.Data.(dto.LoginResponseData).RefreshToken,
+		AccessToken: resp.Data.(dto.LoginResponseData).AccessToken,
 	},
 	StatusCode: resp.StatusCode,
 	StatusCodeMessage: resp.StatusCodeMessage,
@@ -112,14 +138,14 @@ func (h *AuthHandler) Login(res http.ResponseWriter, req *http.Request){
 func (h *AuthHandler) SendOtp(res http.ResponseWriter,req *http.Request){
 	var body dto.SendOtpDto
 	 
-	utils.HandleBodyParsing(req,res,body)
+	utils.HandleBodyParsing(req,res,&body)
 	 resp,errMsg,err := h.service.SendOtp(ctx,body.Email,body.UserType)
 	 utils.HandleAuthResponse(resp,err,errMsg,res)
 }
 
 func (h *AuthHandler) VerifyOtp(res http.ResponseWriter, req *http.Request){
 	var body dto.VerifyOtpDto
-	utils.HandleBodyParsing(req,res,body)
+	utils.HandleBodyParsing(req,res,&body)
 	 resp,errMsg,err := h.service.VerifyOtp(ctx,body.Email,body.Otp)
 	 utils.HandleAuthResponse(resp,err,errMsg,res)
 }

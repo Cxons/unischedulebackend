@@ -187,6 +187,42 @@ WHERE
     AND c.candidate_status = 'CURRENT';
 
 
+
+-- name: GetStudentTimetableSessions :many
+SELECT 
+    sp.id AS session_id,
+    sp.session_idx,
+    sp.course_id,
+    sp.venue_id,
+    sp.day,
+    sp.session_time,
+    sp.university_id,
+    c.fitness,
+    c.candidate_status,
+    c.start_of_day,
+    c.end_of_day
+FROM session_placements sp
+JOIN candidates c 
+    ON sp.candidate_id = c.id
+JOIN student_courses_offered sco 
+    ON sp.course_id = sco.course_id
+JOIN students s 
+    ON sco.student_id = s.student_id
+WHERE s.student_id = $1
+  AND c.university_id = s.university_id
+  AND c.candidate_status = 'CURRENT'
+ORDER BY 
+    CASE sp.day
+        WHEN 'Monday' THEN 1
+        WHEN 'Tuesday' THEN 2
+        WHEN 'Wednesday' THEN 3
+        WHEN 'Thursday' THEN 4
+        WHEN 'Friday' THEN 5
+    END,
+    sp.session_time ASC;
+
+
+
 -- -- name: UpdateOtherCandidateStatus :one
 -- UPDATE 
 

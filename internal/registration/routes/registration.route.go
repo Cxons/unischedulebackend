@@ -24,11 +24,12 @@ func Routes(regHandler regHandler.RegHandler) chi.Router {
 		r.Get("/approvedean",regHandler.ApproveDean)
 	})
 
+	
+	r.Post("/dean/confirm",regHandler.RequestDeanConfirmation)
+	r.Get("/dean/confirm",regHandler.CheckDeanConfirmation)
 
 	r.Route("/dean",func(r chi.Router) {
 		r.Use(deanMiddleware)
-		r.Post("/confirm",regHandler.RequestDeanConfirmation)
-		r.Get("/confirm",regHandler.CheckDeanConfirmation)
 		r.Post("/",regHandler.CreateDean)
 		r.Post("/faculty",regHandler.CreateFaculty)
 		r.Get("/pendinghods",regHandler.RetrievePendingHods)
@@ -36,10 +37,11 @@ func Routes(regHandler regHandler.RegHandler) chi.Router {
 	})
 
 	
+
+	r.Post("/confirm",regHandler.RequestHodConfirmation)
+	r.Get("/confirm",regHandler.CheckHodConfirmation)
 	r.Route("/hod",func(r chi.Router) {
 		r.Use(hodMiddleware)
-		r.Post("/confirm",regHandler.RequestHodConfirmation)
-		r.Get("/confirm",regHandler.CheckHodConfirmation)
 		r.Get("/",regHandler.CreateHod)
 		r.Post("/department",regHandler.CreateDeparment)
 		r.Get("/pendinglecturers",regHandler.RetrievePendingLecturers)
