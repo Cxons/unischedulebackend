@@ -1,5 +1,7 @@
 package dto
 
+import "github.com/google/uuid"
+
 
 
 
@@ -10,7 +12,7 @@ type CreateCourseDto struct{
 	CourseDuration int `json:"courseDuration" validate:"required"`
 	DepartmentId string `json:"departmentId" validate:"required"`
 	UniversityId string `json:"universityId" validate:"required"`
-	LecturerId string `json:"universtyId" validate:"omitempty"`
+	LecturerId string `json:"lecturerId" validate:"required"`
 	SessionsPerWeek int `json:"sessionsPerWeek" validate:"required"`
 	Level int `json:"level" validate:"required"`
 	Semester string `json:"semester" validate:"required"`
@@ -42,11 +44,24 @@ type SetStudentCourseDto struct {
 
 type SetCourseLecturersDto struct {
 	CourseId string `json:"courseId" validate:"required"`
-	LecturerId string `json:"lecturerIc" validate:"required"`
+	LecturerId string `json:"lecturerId" validate:"required"`
 }
 
 type UpdateCourseLecturersDto struct {
 	LecturerId string `json:"lecturerId" validate:"required"`
 	CourseId string `json:"courseId" validate:"required"`
 	LecturerId2 string `json:"lecturerId2" validate:"required"`
+}
+
+
+type SetCoursePossibleVenuesDto struct {
+	CourseId string `json:"courseId" validate:"required"`
+	UniversityId string `json:"universityId" validate:"required"`
+	Venues []uuid.UUID
+}
+
+type SetCohortCoursesDto struct {
+	UniversityId string `json:"universityId" validate:"required"`
+	CohortId string `json:"cohortId" validate:"required"`
+	Courses []uuid.UUID
 }

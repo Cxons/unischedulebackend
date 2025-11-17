@@ -18,6 +18,7 @@ RETURNING *;
 
 -- name: RetrieveCoursesForADepartment :many
 SELECT
+    course_id,
     course_code,
     course_title,
     course_credit_unit,
@@ -45,6 +46,35 @@ SET
     semester = $8
 WHERE course_id = $9
 RETURNING *;
+
+
+-- name: SetCoursePossibleVenue :exec
+INSERT INTO courses_possible_venues(
+    course_id,
+    venue_id,
+    university_id
+)VALUES($1,$2,$3);
+
+
+-- name: DeleteCoursePossibleVenue :exec
+DELETE FROM courses_possible_venues
+WHERE course_id = $1
+AND venue_id = $2;
+
+-- name: FetchCoursePossibleVenues :many
+SELECT 
+    cpv.venue_id,
+    v.venue_name,
+    v.capacity
+FROM courses_possible_venues cpv
+INNER JOIN 
+    venues v
+ON 
+    cpv.venue_id = v.venue_id
+WHERE
+    course_id = $1;
+
+
 
 
 -- name: RetrieveAllCoursesAndTheirVenueIds :many
@@ -85,6 +115,25 @@ INSERT INTO student_courses_offered(
 RETURNING *;
 
 
+-- name: FetchStudentCourses :many
+SELECT
+    c.course_id,
+    c.course_code,
+    c.course_title,
+    c.course_credit_unit,
+    c.course_duration,
+    c.department_id,
+    c.sessions_per_week,
+    c.lecturer_id,
+    c.semester,
+    c.level,
+    c.department_id
+FROM student_courses_offered sco
+JOIN courses c
+ON c.course_id = sco.course_id
+WHERE student_id = $1;
+
+
 -- name: RemoveStudentCourse :one
 DELETE FROM student_courses_offered
 WHERE student_id = $1
@@ -117,9 +166,22 @@ INSERT INTO cohort_courses_offered(
 RETURNING *;
 
 
--- name: FetchCoursesForACohort :many
+-- -- name: FetchCoursesForACohort :many
+-- SELECT
+--     cohort_id
+-- FROM cohort_courses_offered
+-- WHERE cohort_id = $1
+-- AND university_id = $2;
+
+-- name: FetchAllCourses :many
 SELECT
-    cohort_id
-FROM cohort_courses_offered
-WHERE cohort_id = $1
-AND university_id = $2;
+    course_id,
+    course_code,
+    course_title,
+    course_credit_unit,
+    course_duration,
+    sessions_per_week,
+    level,
+    semester
+FROM courses
+WHERE university_id = $1;

@@ -119,6 +119,8 @@ func (h *AuthHandler) Login(res http.ResponseWriter, req *http.Request){
 	}
 		slog.Info("cookie","key",cookie)
 		http.SetCookie(res,cookie)
+	}else{
+		slog.Info("cookie not set")
 	}
 	modifiedResp := service.AuthResponse{
 		Message: resp.Message,

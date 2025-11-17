@@ -44,3 +44,15 @@ func (lq *LecturerQueries) RetrieveTotalLecturersCount(ctx context.Context,unive
 func (lq *LecturerQueries) RetrieveAllLecturers(ctx context.Context, uniId uuid.NullUUID)([]sqlc.RetrieveTotalLecturersRow,error){
 	return lq.q.RetrieveTotalLecturers(ctx,uniId)
 }
+
+func (lq *LecturerQueries) FetchApprovedLecturersInDepartment(ctx context.Context, deptId uuid.UUID)([]sqlc.FetchApprovedLecturersInDepartmentRow,error){
+	return lq.q.FetchApprovedLecturersInDepartment(ctx,deptId)
+}
+
+func (lq *LecturerQueries) CreateLecturerUnavailability(ctx context.Context, data sqlc.CreateLecturerUnavailabilityParams)error{
+	return lq.q.CreateLecturerUnavailability(ctx,data)
+}
+
+func (lq *LecturerQueries) UpdateLecturerUniversityId(ctx context.Context,param sqlc.UpdateLecturerUniversityIdParams)error{
+	return lq.q.UpdateLecturerUniversityId(ctx,param)
+}

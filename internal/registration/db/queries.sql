@@ -107,6 +107,7 @@ SET approved = TRUE
 WHERE wait_id = $1
 RETURNING *;
 
+
 -- name: ApproveHod :one
 UPDATE hod_waiting_list
 SET approved = TRUE
@@ -144,6 +145,67 @@ INNER JOIN
     lecturers l ON dwl.lecturer_id = l.lecturer_id
 WHERE 
     dwl.wait_id = $1;
+
+-- name: CheckDeanConfirmationWithLecturerId :one
+SELECT 
+    l.lecturer_id,
+    l.lecturer_first_name,
+    l.lecturer_last_name,
+    l.lecturer_profile_pic,
+    dwl.potential_faculty,
+    dwl.additional_message,
+    dwl.approved
+FROM 
+    dean_waiting_list dwl
+INNER JOIN 
+    lecturers l ON dwl.lecturer_id = l.lecturer_id
+WHERE 
+    l.lecturer_id = $1
+AND
+    dwl.approved = true;
+
+-- name: CheckHodConfirmationWithLecturerId :one
+SELECT 
+    l.lecturer_id,
+    l.lecturer_first_name,
+    l.lecturer_last_name,
+    l.lecturer_profile_pic,
+    hwl.potential_department,
+    hwl.additional_message,
+    hwl.approved
+FROM 
+    hod_waiting_list hwl
+INNER JOIN 
+    lecturers l ON hwl.lecturer_id = l.lecturer_id
+WHERE 
+    l.lecturer_id = $1
+AND
+    hwl.approved = true;
+
+-- name: InsertCurrentDean :one
+INSERT INTO current_dean (
+    lecturer_id,
+    faculty_id,
+    university_id,
+    start_date,
+    end_date
+)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
+-- name: InsertCurrentHod :one
+INSERT INTO current_hod (
+    lecturer_id,
+    department_id,
+    university_id,
+    start_date,
+    end_date
+)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+    
+
+
 
 -- name: RequestHodConfirmation :one
 INSERT INTO hod_waiting_list(
@@ -192,6 +254,60 @@ INNER JOIN
     lecturers l ON lwl.lecturer_id = l.lecturer_id
 WHERE 
     lwl.wait_id = $1;
+
+
+
+-- name: FetchApprovedLecturersInDepartment :many
+SELECT 
+    l.lecturer_id,
+    l.lecturer_first_name,
+    l.lecturer_last_name,
+    l.lecturer_middle_name,
+    l.lecturer_email,
+    l.lecturer_profile_pic,
+    lw.wait_id,
+    lw.additional_message,
+    lw.approved
+FROM lecturers l
+JOIN lecturer_waiting_list lw
+    ON l.lecturer_id = lw.lecturer_id
+WHERE lw.department_id = $1
+  AND lw.approved = TRUE;
+
+
+-- name: CreateLecturerUnavailability :exec
+INSERT INTO lecturer_unavailability(
+    lecturer_id,day,start_time,end_time,reason
+)VALUES($1,$2,$3,$4,$5);
+
+-- name: FetchLecturerUnavailability :many
+SELECT
+    lecturer_id,
+    day,
+    start_time,
+    end_time,
+    reason
+FROM lecturer_unavailability
+WHERE lecturer_id = $1;
+
+-- name: UpdateLecturerUnavailability :exec
+UPDATE lecturer_unavailability
+SET
+    day = $1,
+    start_time = $2,
+    end_time = $3
+WHERE
+    id = $4;
+
+-- name: CreateCohortCoursesOffered :one
+INSERT INTO cohort_courses_offered(
+    cohort_id,course_id,university_id
+)VALUES(
+    $1,$2,$3
+)
+RETURNING *;
+
+
 
 
 

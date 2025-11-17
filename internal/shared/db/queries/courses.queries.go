@@ -69,9 +69,9 @@ func (cq *CoursesQueries) CreateCohortCourse(ctx context.Context,params sqlc.Cre
 }
 
 
-func (cq *CoursesQueries) FetchCoursesForACohort(ctx context.Context, params sqlc.FetchCoursesForACohortParams)([]uuid.UUID,error){
-	return cq.q.FetchCoursesForACohort(ctx,params)
-}
+// func (cq *CoursesQueries) FetchCoursesForACohort(ctx context.Context, params sqlc.FetchCoursesForACohortParams)([]uuid.UUID,error){
+// 	return cq.q.FetchCoursesForACohort(ctx,params)
+// }
 
 func (cq *CoursesQueries) FetchSessionsForACohort(ctx context.Context,params sqlc.GetCohortSessionsInCurrentTimetableParams)([]sqlc.GetCohortSessionsInCurrentTimetableRow,error){
 	return cq.q.GetCohortSessionsInCurrentTimetable(ctx,params)
@@ -79,4 +79,24 @@ func (cq *CoursesQueries) FetchSessionsForACohort(ctx context.Context,params sql
 
 func (cq *CoursesQueries) FetchSessionsForAStudent(ctx context.Context,studentId uuid.UUID)([]sqlc.GetStudentTimetableSessionsRow,error){
 	return cq.q.GetStudentTimetableSessions(ctx,studentId)
+}
+
+func (cq *CoursesQueries) SetCoursePossibleVenue(ctx context.Context,arg sqlc.SetCoursePossibleVenueParams)error{
+	return cq.q.SetCoursePossibleVenue(ctx,arg)
+}
+
+func (cq *CoursesQueries) DeleteCoursePossibleVenue(ctx context.Context,arg sqlc.DeleteCoursePossibleVenueParams)error{
+	return cq.q.DeleteCoursePossibleVenue(ctx,arg)
+}
+
+func (cq *CoursesQueries) FetchCoursePossibleVenues(ctx context.Context,courseId uuid.UUID)([]sqlc.FetchCoursePossibleVenuesRow,error){
+	return cq.q.FetchCoursePossibleVenues(ctx,courseId)
+}
+
+func (cq *CoursesQueries) RetrieveCoursesForACohort(ctx context.Context,cohortId uuid.UUID)([]sqlc.RetrieveCoursesForACohortRow,error){
+	return cq.q.RetrieveCoursesForACohort(ctx,cohortId)
+}
+
+func (cq *CoursesQueries) FetchAllCourses(ctx context.Context, uniId uuid.UUID)([]sqlc.FetchAllCoursesRow,error){
+	return cq.q.FetchAllCourses(ctx,uniId)
 }

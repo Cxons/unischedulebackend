@@ -38,6 +38,10 @@ func (dq *DeanQueries) CheckDeanConfirmation(ctx context.Context,waitId uuid.UUI
 	return dq.q.CheckDeanConfirmation(ctx,waitId)
 }
 
+func (dq *DeanQueries) CheckDeanConfirmationWithLecturerId(ctx context.Context, lecturerId uuid.UUID)(sqlc.CheckDeanConfirmationWithLecturerIdRow,error){
+	return dq.q.CheckDeanConfirmationWithLecturerId(ctx,lecturerId)
+}
+
 func (dq *DeanQueries) RetrievePendingHods(ctx context.Context,deanInfo sqlc.RetrievePendingHodsParams)([]sqlc.HodWaitingList,error){
 	return dq.q.RetrievePendingHods(ctx,deanInfo)
 }

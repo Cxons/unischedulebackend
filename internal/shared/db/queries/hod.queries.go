@@ -47,3 +47,7 @@ func (hq *HodQueries) RetrievePendingLecturers(ctx context.Context,hodInfo sqlc.
 func (hq *HodQueries) ApproveLecturer(ctx context.Context, waitId uuid.UUID)(sqlc.LecturerWaitingList,error){
 	return hq.q.ApproveLecturer(ctx,waitId)
 }
+
+func (hq *HodQueries) CheckHodConfirmationWithLecturerId(ctx context.Context, lecturerId uuid.UUID)(sqlc.CheckHodConfirmationWithLecturerIdRow,error){
+	return hq.q.CheckHodConfirmationWithLecturerId(ctx,lecturerId)
+}

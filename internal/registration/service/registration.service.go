@@ -5,14 +5,18 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"time"
 
+	"github.com/Cxons/unischedulebackend/internal/registration/dto"
 	regDto "github.com/Cxons/unischedulebackend/internal/registration/dto"
 	"github.com/Cxons/unischedulebackend/internal/registration/repository"
+	"github.com/Cxons/unischedulebackend/internal/shared/constants"
 	sqlc "github.com/Cxons/unischedulebackend/internal/shared/db"
 	sharedDto "github.com/Cxons/unischedulebackend/internal/shared/dto"
 	"github.com/Cxons/unischedulebackend/internal/shared/utils"
 	"github.com/Cxons/unischedulebackend/pkg/auth/jwt"
 	status "github.com/Cxons/unischedulebackend/pkg/statuscodes"
+	"github.com/google/uuid"
 )
 
 
@@ -29,12 +33,12 @@ type PendingHodDto = regDto.PendingHodDto
 type PendingLecturerDto = regDto.PendingLecturerDto
 type CreateDeanDto = regDto.CreateDeanDto
 type CreateHodDto = regDto.CreateHodDto
-var userInfoKey = &sharedDto.UserContext{Value: "UserInfo"}
+var userInfoKey = constants.UserInfoKey
 
 type RegService interface{
 	UpdateAdmin(ctx context.Context,adminInfo UpdateAdminDto)(RegResponse,string,error)
 	CreateUniversity(ctx context.Context, uniInfo CreateUniversityDto)(RegResponse,string,error)
-	ApproveDean(ctx context.Context,waitId string)(RegResponse,string,error)
+	ApproveDean(ctx context.Context,waitId string,lecturerId string)(RegResponse,string,error)
 	RetrievePendingDeans(ctx context.Context, uniId string)(RegResponse,string,error)
 	RequestDeanConfirmation(ctx context.Context, dean RequestDeanConfirmationDto )(RegResponse,string,error)
 	CheckDeanConfirmation(ctx context.Context, waitId string)(RegResponse,string,error)
@@ -46,13 +50,17 @@ type RegService interface{
 	ApproveLecturer(ctx context.Context,waitId string)(RegResponse,string,error)
 	RequestLecturerConfirmation(ctx context.Context, lecturer RequestLecturerConfirmationDto)(RegResponse,string,error)
 	CheckLecturerConfirmation(ctx context.Context, waitId string)(RegResponse,string,error)
-	CreateDepartment(ctx context.Context, deptInfo CreateDepartmentDto)(RegResponse,string,error)
-	CreateFaculty(ctx context.Context, facInfo CreateFacultyDto)(RegResponse,string,error)
+	CreateDepartment(ctx context.Context, deptInfo CreateDepartmentDto,lecturerId uuid.UUID,startDate time.Time, endDate time.Time)(RegResponse,string,error)
+	CreateFaculty(ctx context.Context, facInfo CreateFacultyDto,startTime time.Time, endTime time.Time)(RegResponse,string,error)
 	CreateDean(ctx context.Context, deanInfo CreateDeanDto )(RegResponse,string,error)
 	CreateHod(ctx context.Context, hodInfo CreateHodDto)(RegResponse,string,error)
 	CheckCurrentDean(ctx context.Context,deanId string)(bool,error)
 	CheckCurrentHod(ctx context.Context,hodId string)(bool,error)
 	CheckCurrentAdmin(ctx context.Context,adminId string)(bool,error)
+	FetchDeanWaitDetails(ctx context.Context,waitId string)(RegResponse,string,error)
+	FetchHodWaitDetails(ctx context.Context,waitId string)(RegResponse,string,error)
+	FetchLecturerWaitDetails(ctx context.Context,lecturerWaitId string)(RegResponse,string,error)
+	CreateLecturerUnavailability(ctx context.Context, params dto.CreateLecturerUnavailability,lecturerId uuid.UUID)(RegResponse,string,error)
 }
 
 
@@ -61,6 +69,8 @@ type RegServiceStruct struct{
 	regRepo RegRepo
 	logger *slog.Logger
 }
+
+
 
 func NewRegService(repo RegRepo,logger *slog.Logger)*RegServiceStruct{
 	return &RegServiceStruct{
@@ -109,12 +119,13 @@ func (rs *RegServiceStruct) CreateUniversity(ctx context.Context, uniInfo Create
 		CurrentSession:  utils.StringToNullString(uniInfo.CurrentSession),
 	}
 
-	rs.logger.Info("university", uniInfo)
+	rs.logger.Info("university","value" ,uniInfo)
 
 	uni, err := rs.regRepo.CreateUniversity(ctx, university)
 	if err != nil {
 		rs.logger.Error("Error creating university", "err:", err)
 
+		
 		// Check for "Only one university creation allowed" error
 		if strings.Contains(err.Error(), "Only one university creation allowed") {
 			return RegResponse{}, status.Forbidden.Message, errors.New("Only one university creation allowed")
@@ -141,9 +152,9 @@ func (rs *RegServiceStruct) RetrievePendingDeans(ctx context.Context, uniId stri
 		rs.logger.Error("Error retrieving pending deans","err:",err)
 		return RegResponse{},status.InternalServerError.Message,err
 	}
-	if len(list) == 0 {
-		return RegResponse{},status.NotFound.Message,errors.New("no pending deans found")
-	}
+	// if len(list) == 0 {
+	// 	return RegResponse{},status.NotFound.Message,errors.New("no pending deans found")
+	// }
 	return RegResponse{
 		Message: "Here are the pending deans",
 		Data: list,
@@ -152,8 +163,8 @@ func (rs *RegServiceStruct) RetrievePendingDeans(ctx context.Context, uniId stri
 	},status.OK.Message,nil
 }
 
-func (rs *RegServiceStruct) ApproveDean(ctx context.Context,waitId string)(RegResponse,string,error){
-	idExists,_,err := rs.regRepo.ApproveDean(ctx,utils.StringToUUID(waitId))
+func (rs *RegServiceStruct) ApproveDean(ctx context.Context,waitId string,lecturerId string)(RegResponse,string,error){
+	idExists,_,err := rs.regRepo.ApproveDean(ctx,utils.StringToUUID(waitId),utils.StringToUUID(lecturerId))
 
 	if err != nil{
 		if !idExists{
@@ -176,8 +187,9 @@ func (rs *RegServiceStruct) RequestDeanConfirmation(ctx context.Context, dean Re
 
 	// retrieves user id from token claims
 	claims := ctx.Value(userInfoKey)
+	rs.logger.Info("claims","value:",claims)
 	if claims != nil{
-		lecturerId = claims.(jwt.CustomClaims).User_id
+		lecturerId = claims.(*jwt.CustomClaims).User_id
 	}else{
 		return RegResponse{},status.InternalServerError.Message,errors.New("problem getiing claims from token")
 	}
@@ -189,10 +201,22 @@ func (rs *RegServiceStruct) RequestDeanConfirmation(ctx context.Context, dean Re
 		UniversityID: utils.StringToUUID(dean.UniversityId),
 	}
 	waitInfo,err := rs.regRepo.RequestDeanConfirmation(ctx,deanInfo)
+	
+	if err != nil {
+		rs.logger.Error("Error creating dean request", "err:", err)
 
+		// Check for "Only one university creation allowed" error
+		if strings.Contains(err.Error(), "Only one dean request creation allowed") {
+			return RegResponse{}, status.Forbidden.Message, errors.New("Only one dean request creation allowed")
+		}
+
+		return RegResponse{}, status.InternalServerError.Message, err
+	}
 	desiredWaitInfo := sqlc.DeanWaitingList{
 		WaitID: waitInfo.WaitID,
 	}
+	rs.logger.Info("deaninfo","info",waitInfo)
+
 
 	if err != nil{
 		rs.logger.Error("Error requesting dean confirmation","err:",err)
@@ -229,15 +253,73 @@ func (rs *RegServiceStruct) CheckDeanConfirmation(ctx context.Context, waitId st
 	},status.OK.Message,nil
 }
 
-func (rs *RegServiceStruct) CreateFaculty(ctx context.Context, facInfo CreateFacultyDto)(RegResponse,string,error){
+func (rs *RegServiceStruct) FetchDeanWaitDetails(ctx context.Context,waitId string)(RegResponse,string,error){
+	data,err := rs.regRepo.CheckDeanConfirmation(ctx,utils.StringToUUID(waitId))
+	if err != nil{
+		rs.logger.Error("Error fetching dean wait details","err:",err)
+		return RegResponse{},status.InternalServerError.Message,err
+	}
+	return RegResponse{
+		Message: "The wait list detail",
+		Data: data,
+		StatusCode: status.OK.Code,
+		StatusCodeMessage: status.OK.Message,
+	},status.OK.Message,nil
+
+}
+func (rs *RegServiceStruct) FetchHodWaitDetails(ctx context.Context,waitId string)(RegResponse,string,error){
+	data,err := rs.regRepo.CheckHodConfirmation(ctx,utils.StringToUUID(waitId))
+	if err != nil{
+		rs.logger.Error("Error fetching hod wait details","err:",err)
+		return RegResponse{},status.InternalServerError.Message,err
+	}
+	return RegResponse{
+		Message: "The wait list detail",
+		Data: data,
+		StatusCode: status.OK.Code,
+		StatusCodeMessage: status.OK.Message,
+	},status.OK.Message,nil
+
+}
+func (rs *RegServiceStruct) FetchLecturerWaitDetails(ctx context.Context,lecturerWaitId string)(RegResponse,string,error){
+	data,err := rs.regRepo.CheckLecturerConfirmation(ctx,utils.StringToUUID(lecturerWaitId))
+	if err != nil{
+		rs.logger.Error("Error fetching lecturer wait details","err:",err)
+		return RegResponse{},status.InternalServerError.Message,err
+	}
+	return RegResponse{
+		Message: "The wait list detail",
+		Data: data,
+		StatusCode: status.OK.Code,
+		StatusCodeMessage: status.OK.Message,
+	},status.OK.Message,nil
+
+}
+
+func (rs *RegServiceStruct) CreateFaculty(ctx context.Context, facInfo CreateFacultyDto,startTime time.Time,endTime time.Time)(RegResponse,string,error){
 	faculty := sqlc.CreateFacultyParams{
 		FacultyName: facInfo.FacultyName,
 		FacultyCode: utils.StringToNullString(facInfo.FacultyCode),
 		UniversityID: utils.StringToUUID(facInfo.UniversityId),
-		
+	}
+	_,deanConfirmErr := rs.regRepo.CheckDeanConfirmationWithLecturerId(ctx,utils.StringToUUID(facInfo.LecturerId))
+	if deanConfirmErr != nil {
+		if strings.Contains(deanConfirmErr.Error(), "dean not confirmed") {
+			return RegResponse{}, status.Forbidden.Message, errors.New("Dean not confirmed")
+		}
+		return RegResponse{}, status.InternalServerError.Message, deanConfirmErr
+	}
+	uni,err,deanId := rs.regRepo.CreateFaculty(ctx,faculty,utils.StringToUUID(facInfo.LecturerId),startTime,endTime)
+	finalData := dto.CreateFacultyResponse{
+		FacultyID: uni.FacultyID,
+		FacultyName: uni.FacultyName,
+		FacultyCode: uni.FacultyCode,
+		UniversityID: uni.UniversityID,
+		CreatedAt: uni.CreatedAt,
+		UpdatedAt: uni.UpdatedAt,
+		DeanId: deanId,
 	}
 
-	uni,err := rs.regRepo.CreateFaculty(ctx,faculty)
 	
 	if err != nil {
 		rs.logger.Error("Error creating faculty","err:",err)
@@ -246,26 +328,28 @@ func (rs *RegServiceStruct) CreateFaculty(ctx context.Context, facInfo CreateFac
 
 	return RegResponse{
 		Message: "Faculty created successfully",
-		Data:uni,
+		Data:finalData,
 		StatusCode: status.Created.Code,
 		StatusCodeMessage: status.Created.Message,
 	},status.Created.Message,nil
 }
 
 func (rs *RegServiceStruct) RetrievePendingHods(ctx context.Context, hodParams PendingHodDto )(RegResponse,string,error){
-	pendingHods := &sqlc.RetrievePendingHodsParams{
+	pendingHods := sqlc.RetrievePendingHodsParams{
 		UniversityID: utils.StringToUUID(hodParams.UniversityId),
 		FacultyID: utils.StringToUUID(hodParams.FacultyId),
 	}
-	list,err := rs.regRepo.RetrievePendingHods(ctx,*pendingHods)
+	rs.logger.Info("uniid","id",pendingHods.UniversityID)
+	rs.logger.Info("facid","id",pendingHods.FacultyID)
+	list,err := rs.regRepo.RetrievePendingHods(ctx,pendingHods)
 
 	if err != nil{
 		rs.logger.Error("Error retrieving pending hods","err:",err)
 		return RegResponse{},status.InternalServerError.Message,err
 	}
-	if len(list) == 0 {
-		return RegResponse{},status.NotFound.Message,errors.New("no pending hods found")
-	}
+	// if len(list) == 0 {
+	// 	return RegResponse{},status.NotFound.Message,errors.New("no pending hods found")
+	// }
 	return RegResponse{
 		Message: "Here are the pending hods",
 		Data: list,
@@ -297,7 +381,7 @@ func (rs *RegServiceStruct) RequestHodConfirmation(ctx context.Context, hod Requ
 	// retrieves user id from token claims
 	claims := ctx.Value(userInfoKey)
 	if claims != nil{
-		lecturerId = claims.(jwt.CustomClaims).User_id
+		lecturerId = claims.(*jwt.CustomClaims).User_id
 	}else{
 		return RegResponse{},status.InternalServerError.Message,errors.New("problem getiing claims from token")
 	}
@@ -350,7 +434,7 @@ func (rs *RegServiceStruct) CheckHodConfirmation(ctx context.Context, waitId str
 }
 
 
-func (rs *RegServiceStruct) CreateDepartment(ctx context.Context, deptInfo CreateDepartmentDto)(RegResponse,string,error){
+func (rs *RegServiceStruct) CreateDepartment(ctx context.Context, deptInfo CreateDepartmentDto,lecturerId uuid.UUID, startDate time.Time, endDate time.Time)(RegResponse,string,error){
 	department := sqlc.CreateDepartmentParams{
 		DepartmentName: deptInfo.DepartmentName,
 		DepartmentCode: utils.StringToNullString(deptInfo.DepartmentCode),
@@ -358,8 +442,27 @@ func (rs *RegServiceStruct) CreateDepartment(ctx context.Context, deptInfo Creat
 		FacultyID: utils.StringToUUID(deptInfo.FacultyId),
 		NumberOfLevels: int32(deptInfo.NumberOfLevels),
 	}
+	_,hodConfirmErr := rs.regRepo.CheckHodConfirmationWithLecturerId(ctx,utils.StringToUUID(lecturerId.String()))
+	if hodConfirmErr != nil {
+		if strings.Contains(hodConfirmErr.Error(), "hod not confirmed") {
+			return RegResponse{}, status.Forbidden.Message, errors.New("Hod not confirmed")
+		}
+	rs.logger.Error("the final dept data","data:",hodConfirmErr)
 
-	err := rs.regRepo.CreateDepartment(ctx,department)
+		return RegResponse{}, status.InternalServerError.Message, hodConfirmErr
+	}
+
+
+	dept,hodId,err := rs.regRepo.CreateDepartment(ctx,department,lecturerId,startDate,endDate)
+	finalDeptData := dto.CreateDepartmentResponse{
+		DepartmentName: dept.DepartmentName,
+		DepartmentCode: dept.DepartmentCode,
+		DepartmentID: dept.DepartmentID,
+		FacultyID: dept.FacultyID,
+		UniversityID: dept.UniversityID,
+		HodId: hodId,
+		NumberOfLevels: int(dept.NumberOfLevels),
+	}
 	
 	if err != nil {
 		rs.logger.Error("Error creating department","err:",err)
@@ -368,6 +471,7 @@ func (rs *RegServiceStruct) CreateDepartment(ctx context.Context, deptInfo Creat
 
 	return RegResponse{
 		Message: "Department created successfully",
+		Data: finalDeptData,
 		StatusCode: status.Created.Code,
 		StatusCodeMessage: status.Created.Message,
 	},status.Created.Message,nil
@@ -385,9 +489,10 @@ func (rs *RegServiceStruct) RetrievePendingLecturers(ctx context.Context, lectur
 		rs.logger.Error("Error retrieving pending lecturers","err:",err)
 		return RegResponse{},status.InternalServerError.Message,err
 	}
-	if len(list) == 0 {
-		return RegResponse{},status.NotFound.Message,errors.New("no pending lecturers found")
-	}
+	// if len(list) == 0 {
+	// 	return RegResponse{},status.NotFound.Message,errors.New("no pending lecturers found")
+	// }
+
 	return RegResponse{
 		Message: "Here are the pending lecturers",
 		Data: list,
@@ -420,7 +525,7 @@ func (rs *RegServiceStruct) RequestLecturerConfirmation(ctx context.Context, lec
 	// retrieves user id from token claims
 	claims := ctx.Value(userInfoKey)
 	if claims != nil{
-		lecturerId = claims.(jwt.CustomClaims).User_id
+		lecturerId = claims.(*jwt.CustomClaims).User_id
 	}else{
 		return RegResponse{},status.InternalServerError.Message,errors.New("problem getiing claims from token")
 	}
@@ -578,4 +683,28 @@ func (rs *RegServiceStruct) CheckCurrentAdmin(ctx context.Context,adminId string
 		return false,errors.New("admin does not exist")
 	}
 	return true,nil
+}
+
+
+func (rs *RegServiceStruct) CreateLecturerUnavailability(ctx context.Context, params dto.CreateLecturerUnavailability,lecturerId uuid.UUID)(RegResponse,string,error){
+	actualLectData := make([]sqlc.CreateLecturerUnavailabilityParams,0)
+	for _,val := range params.Unavailability{
+		actualLectData = append(actualLectData, sqlc.CreateLecturerUnavailabilityParams{
+			LecturerID: lecturerId,
+			Day: val.Day,
+			StartTime: val.StartTime,
+			EndTime: val.EndTime,
+			Reason: utils.StringToNullString(val.Reason),
+		})
+	}
+	err := rs.regRepo.CreateLecturerUnavailability(ctx,actualLectData)
+	if err != nil{
+		rs.logger.Error("error creating lecturer unavailability","err:",err)
+		return RegResponse{},status.Created.Message,err
+	}
+	return RegResponse{
+		Message: "Lecturer unavailability created",
+		StatusCode: status.Created.Code,
+		StatusCodeMessage: status.Created.Message,
+	},status.Created.Message,nil
 }

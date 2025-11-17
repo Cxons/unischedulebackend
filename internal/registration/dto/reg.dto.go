@@ -1,5 +1,12 @@
 package dto
 
+import (
+	"database/sql"
+	"time"
+
+	"github.com/google/uuid"
+)
+
 
 type UpdateAdminDto struct{
 	MiddleName string `json:"middleName" validate:"omitempty"`
@@ -25,6 +32,25 @@ type CreateFacultyDto struct {
 	FacultyName string `json:"facultyName" validate:"required"`
 	FacultyCode string `json:"facultyCode" validate:"required"`
 	UniversityId string `json:"universityId" validate:"required"`
+	LecturerId string `json:"lecturerId" validate:"required"`
+}
+type CreateFacultyResponse struct{
+	FacultyID uuid.UUID
+	FacultyName string
+	FacultyCode sql.NullString
+	UniversityID uuid.UUID
+	CreatedAt sql.NullTime
+	UpdatedAt sql.NullTime
+	DeanId uuid.UUID
+}
+
+
+type CreateFacultyDtoResponse struct {
+	FacultyName  string    `json:"facultyName" validate:"required"`
+	FacultyCode  string    `json:"facultyCode" validate:"required"`
+	UniversityId string    `json:"universityId" validate:"required"`
+	StartDate    time.Time `json:"startDate" validate:"required"`
+	EndDate      time.Time `json:"endDate"` // optional, if not yet ended
 }
 
 type CreateDepartmentDto struct {
@@ -35,9 +61,28 @@ type CreateDepartmentDto struct {
 	NumberOfLevels int `json:"numberOfLevels" validate:"required"`
 }
 
+type CreateDepartmentResponse struct{
+	FacultyID uuid.UUID
+	DepartmentName string
+	DepartmentCode sql.NullString
+	UniversityID uuid.UUID
+	DepartmentID uuid.UUID
+	HodId uuid.UUID
+	NumberOfLevels int
+}
+
+type CreateDepartmentDtoResponse struct {
+	DepartmentName string `json:"departmentName" validate:"required"`
+	DepartmentCode string `json:"departmentCode" validate:"required"`
+	UniversityId string `json:"universityId" validate:"required"`
+	FacultyId string `json:"facultyId" validate:"required"`
+	NumberOfLevels int `json:"numberOfLevels" validate:"required"`
+	StartDate    time.Time `json:"startDate" validate:"required"`
+	EndDate      time.Time `json:"endDate"` 
+}
 type RequestDeanConfirmationDto struct {
 	PotentialFaculty string `json:"potentialFaculty" validate:"required"`
-	AdditionalMessage string `json:"addtionalMessage" validate:"omitempty"`
+	AdditionalMessage string `json:"additionalMessage" validate:"omitempty"`
 	UniversityId string `json:"universityId" validate:"required"`
 }
 
@@ -62,7 +107,7 @@ type PendingLecturerDto struct {
 
 type RequestLecturerConfirmationDto struct {
 	AdditionalMessage string `json:"addtionalMessage" validate:"omitempty"`
-	UniversityId string `json:"ungiversityId" validate:"required"`
+	UniversityId string `json:"universityId" validate:"required"`
 	FacultyId string `json:"facultyId" validate:"required"`
 	DepartmentId string `json:"departmentId" validate:"required"`
 }
@@ -81,6 +126,26 @@ type CreateHodDto struct {
 	UniversityId string `json:"universityId" validate:"required"`
 	StartDate string `json:"startDate" validate:"required"`
 	EndDate string `json:"endDate" validate:"required"`
+}
+
+
+type DeanWaitingList struct{
+	WaitID uuid.UUID
+	LecturerID uuid.UUID
+	PotentialFaculty string
+	UniversityID string
+	AdditionalMessage string
+	Approved bool
+}
+type CreateLecturerUnavailability struct {
+	Unavailability []LecturerUnavailability
+}
+
+type LecturerUnavailability struct{
+	Reason string `json:"unavailabilityReason" validate:"omitempty"`
+	Day string `json:"unavailabilityDay" validate:"required"`
+	StartTime time.Time `json:"unavailabilityStartTime" validate:"required"`
+	EndTime time.Time `json:"unavailabilityEndtime" validate:"required"`
 }
 // type CreateUniversityParams struct {
 //     UniversityName string

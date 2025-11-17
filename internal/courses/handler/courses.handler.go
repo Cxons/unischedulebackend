@@ -62,38 +62,83 @@ func NewCoursePackage(logger *slog.Logger,db *sql.DB) *CourseHandler{
 
 
 
-func (ch *CourseHandler) CreateCourse(req *http.Request, res http.ResponseWriter){
+func (ch *CourseHandler) CreateCourse( res http.ResponseWriter,req *http.Request){
 	var body dto.CreateCourseDto
-	utils.HandleBodyParsing(req,res,body)
+	utils.HandleBodyParsing(req,res,&body)
 	resp,errMsg,err := ch.CourseService.CreateCourse(ctx,body)
 	utils.HandleAuthResponse(resp,err,errMsg,res)
 }
 
 
-func (ch *CourseHandler) UpdateCourse(req *http.Request, res http.ResponseWriter){
+func (ch *CourseHandler) UpdateCourse(res http.ResponseWriter,req *http.Request){
 	var body dto.UpdateCourseDto
-	utils.HandleBodyParsing(req,res,body)
+	utils.HandleBodyParsing(req,res,&body)
 	resp,errMsg,err := ch.CourseService.UpdateCourse(ctx,body)
 	utils.HandleAuthResponse(resp,err,errMsg,res)
 }
 
 
-func (ch *CourseHandler) SetStudentCourses(req *http.Request, res http.ResponseWriter){
+func (ch *CourseHandler) SetStudentCourses(res http.ResponseWriter,req *http.Request){
 	var body []dto.SetStudentCourseDto
-	utils.HandleBodyParsing(req,res,body)
+	utils.HandleBodyParsing(req,res,&body)
 	resp,errMsg,err := ch.CourseService.SetStudentCourses(ctx,body)
 	utils.HandleAuthResponse(resp,err,errMsg,res)
 }
 
 
-func (ch *CourseHandler) RetrieveCoursesForADepartment(req *http.Request, res http.ResponseWriter){
+func (ch *CourseHandler) RetrieveCoursesForADepartment(res http.ResponseWriter,req *http.Request){
 	var body dto.RetrieveCoursesForDeptDto
-	utils.HandleBodyParsing(req,res,body)
+	utils.HandleBodyParsing(req,res,&body)
 	resp,errMsg,err := ch.CourseService.RetrieveCoursesForADepartment(ctx,body)
 	utils.HandleAuthResponse(resp,err,errMsg,res)
 }
 
 
-func (ch *CourseHandler) DeleteCourse(req *http.Request, res http.ResponseWriter){
-	
+func (ch *CourseHandler) SetCoursePossibleVenues(res http.ResponseWriter,req *http.Request){
+	var body dto.SetCoursePossibleVenuesDto
+	utils.HandleBodyParsing(req,res,&body)
+	resp,errMsg,err := ch.CourseService.SetCoursePossibleVenues(ctx,body)
+	utils.HandleAuthResponse(resp,err,errMsg,res)
 }
+
+func (ch *CourseHandler) DeleteCoursePossibleVenue(res http.ResponseWriter,req *http.Request){
+	queryParams := req.URL.Query()
+	courseId := queryParams.Get("courseId")
+	venueId := queryParams.Get("venueId")
+	resp,errMsg,err := ch.CourseService.DeleteCoursePossibleVenue(ctx,sqlc.DeleteCoursePossibleVenueParams{
+		CourseID: utils.StringToUUID(courseId),
+		VenueID: utils.StringToUUID(venueId),
+	})
+	utils.HandleAuthResponse(resp,err,errMsg,res)
+}
+
+func (ch *CourseHandler) FetchCoursePossibleVenues(res http.ResponseWriter, req *http.Request){
+	queryParams := req.URL.Query()
+	courseId := queryParams.Get("courseId")
+	resp,errMsg,err := ch.CourseService.FetchCoursePossibleVenues(ctx,utils.StringToUUID(courseId))
+	utils.HandleAuthResponse(resp,err,errMsg,res)
+}
+
+func (ch *CourseHandler) RetrieveCoursesForACohort(res http.ResponseWriter, req *http.Request){
+	queryParams := req.URL.Query()
+	cohortId := queryParams.Get("cohortId")
+	resp,errMsg,err := ch.CourseService.RetrieveCoursesForACohort(ctx,utils.StringToUUID(cohortId))
+	utils.HandleAuthResponse(resp,err,errMsg,res)
+}
+
+func (ch *CourseHandler) SetCoursesForACohort(res http.ResponseWriter, req *http.Request){
+	var body dto.SetCohortCoursesDto
+	utils.HandleBodyParsing(req,res,&body)
+	resp,errMsg,err := ch.CourseService.SetCoursesForACohort(ctx,body)
+	utils.HandleAuthResponse(resp,err,errMsg,res)
+}
+
+func (ch *CourseHandler) FetchAllCourses(res http.ResponseWriter, req *http.Request){
+	queryParams := req.URL.Query()
+	universityId := queryParams.Get("uniId")
+	resp,errMsg,err := ch.CourseService.RetrieveAllCourses(ctx,utils.StringToUUID(universityId))
+	utils.HandleAuthResponse(resp,err,errMsg,res)
+}
+// func (ch *CourseHandler) DeleteCourse(req *http.Request, res http.ResponseWriter){
+	
+// }

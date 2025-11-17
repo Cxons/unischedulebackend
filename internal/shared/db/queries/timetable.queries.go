@@ -23,7 +23,7 @@ func NewTimeTableQueries(q *sqlc.Queries)*TimeTableQueries{
 }
 
 
-func (tmtq *TimeTableQueries) CreateSessionPlacement(ctx context.Context,params sqlc.CreateSessionPlacementsParams)(sqlc.SessionPlacement,error){
+func (tmtq *TimeTableQueries) CreateSessionPlacement(ctx context.Context,params sqlc.CreateSessionPlacementsParams)(error){
 	return tmtq.q.CreateSessionPlacements(ctx,params)
 }
 

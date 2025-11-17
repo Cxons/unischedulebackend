@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 
 	sqlc "github.com/Cxons/unischedulebackend/internal/shared/db"
 	"github.com/Cxons/unischedulebackend/internal/shared/db/queries"
@@ -39,12 +41,14 @@ type timetableRepository struct {
 
 
 
-func NewtimeTableRepository(vq *queries.VenueQueries, lq *queries.LecturerQueries,cohq *queries.CohortQueries, cq *queries.CoursesQueries)*timetableRepository{
+func NewtimeTableRepository(vq *queries.VenueQueries, lq *queries.LecturerQueries,cohq *queries.CohortQueries, cq *queries.CoursesQueries, tmtq *queries.TimeTableQueries,store sqlc.Store)*timetableRepository{
 	return &timetableRepository{
 		vq: vq,
 		lq: lq,
 		cohq:cohq,
 		cq:cq,
+		tmtq: tmtq,
+		store: store,
 	}
 
 }
@@ -101,29 +105,70 @@ func (ttrp *timetableRepository) RetrieveTotalCohortCourses(ctx context.Context,
 func (ttrp *timetableRepository) RetrieveCohortsForAllCourses(ctx context.Context, uniId uuid.UUID)([]sqlc.RetrieveCohortsForAllCoursesRow,error){
 	return ttrp.cohq.RetrieveTotalCohortCourses(ctx,uniId)
 }
+// func parseTimeFromString(timeStr string) (time.Time, error) {
+//     if timeStr == "" {
+//         return time.Time{}, fmt.Errorf("empty time string")
+//     }
+    
+//     // Remove any timezone information if present
+//     timeStr = strings.Split(timeStr, "+")[0]
+//     timeStr = strings.Split(timeStr, "-")[0]
+//     timeStr = strings.TrimSpace(timeStr)
+    
+//     // Try different time formats
+//     formats := []string{
+//         "15:04:05",
+//         "15:04:05.999999",
+//         "15:04",
+//         "2006-01-02 15:04:05",
+//         "2006-01-02T15:04:05",
+//         time.RFC3339,
+//     }
+    
+//     for _, format := range formats {
+//         if t, err := time.Parse(format, timeStr); err == nil {
+//             // Extract only the time part (ignore date)
+//             return time.Date(0, 1, 1, t.Hour(), t.Minute(), t.Second(), 0, time.UTC), nil
+//         }
+//     }
+    
+//     return time.Time{}, fmt.Errorf("unable to parse time string: %s", timeStr)
+// }
+func (ttrp *timetableRepository) CreateACandidateTimeTable(ctx context.Context, candidateData sqlc.CreateCandidateParams, sessionPlacements []types.CustomSessionPlacement) error {
+    return ttrp.store.ExecTx(ctx, func(q *sqlc.Queries) error {
+        val, createCandidateErr := q.CreateCandidate(ctx, candidateData)
+        if createCandidateErr != nil {
+            return createCandidateErr
+        }
 
-func (ttrp *timetableRepository) CreateACandidateTimeTable(ctx context.Context, candidateData sqlc.CreateCandidateParams, sessionPlacements []types.CustomSessionPlacement)error{
-	return ttrp.store.ExecTx(ctx,func(q *sqlc.Queries)error{
-		val,createCandidateErr := q.CreateCandidate(ctx,candidateData)
-		if createCandidateErr != nil{
-			return createCandidateErr
-		}
-		for _,placement := range sessionPlacements{
-			_,createSessionPlacementsErr := q.CreateSessionPlacements(ctx,sqlc.CreateSessionPlacementsParams{
-				CandidateID: val.ID,
-				SessionIdx: placement.SessionIdx,
-				CourseID: placement.CourseId,
-				VenueID: placement.VenueId,
-				Day: placement.Day,
-				SessionTime: placement.SessionTime,
-				UniversityID: placement.UniversityId,
-			})
-			if createSessionPlacementsErr != nil{
-				return createSessionPlacementsErr
-			}
-		}
-		return nil
-	})
+        slog.Info("Creating session placements", "count", len(sessionPlacements))
+
+        for i, placement := range sessionPlacements {
+            params := sqlc.CreateSessionPlacementsParams{
+                CandidateID:  val.ID,
+                SessionIdx:   placement.SessionIdx,
+                CourseID:     placement.CourseId,
+                VenueID:      placement.VenueId,
+                Day:          placement.Day,
+                SessionTime:  placement.SessionTime,
+                UniversityID: placement.UniversityId,
+            }
+
+            createSessionPlacementsErr := q.CreateSessionPlacements(ctx, params)
+            if createSessionPlacementsErr != nil {
+                slog.Error("Failed to create session placement", 
+                    "sessionIdx", placement.SessionIdx,
+                    "index", i,
+                    "error", createSessionPlacementsErr,
+                    "sessionTime", placement.SessionTime,
+                    "sessionTimeType", fmt.Sprintf("%T", placement.SessionTime))
+                return fmt.Errorf("failed to create session placement for session %d: %w", placement.SessionIdx, createSessionPlacementsErr)
+            }
+        }
+        
+        slog.Info("Successfully created all session placements", "count", len(sessionPlacements))
+        return nil
+    })
 }
 
 func (ttrp *timetableRepository) DeprecateLatestCandidate(ctx context.Context,uniId uuid.UUID)error{

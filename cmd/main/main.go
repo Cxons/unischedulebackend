@@ -11,9 +11,12 @@ import (
 	"time"
 
 	authHandler "github.com/Cxons/unischedulebackend/internal/auth/handler"
+	courseHandler "github.com/Cxons/unischedulebackend/internal/courses/handler"
 	regHandler "github.com/Cxons/unischedulebackend/internal/registration/handler"
 	"github.com/Cxons/unischedulebackend/internal/server"
 	"github.com/Cxons/unischedulebackend/internal/shared/db"
+	timetableHandler "github.com/Cxons/unischedulebackend/internal/timetable/handler"
+	uniHandler "github.com/Cxons/unischedulebackend/internal/university/handler"
 	"github.com/Cxons/unischedulebackend/pkg/caching"
 	supHandler "github.com/Cxons/unischedulebackend/pkg/supabase/handler"
 	"github.com/joho/godotenv"
@@ -57,11 +60,14 @@ func main() {
 	// 6️⃣ Initialize module handlers
 	auth := authHandler.NewAuthPackage(logger, dbInstance.DB)
 	reg := regHandler.NewRegPackage(logger, dbInstance.DB)
+	uni := uniHandler.NewUniversityPackage(logger,dbInstance.DB)
 	supabase := supHandler.NewSupabasePackage(logger,getEnv("SUPABASE_URL",""),getEnv("SUPABASE_SECRET_KEY",""))
+	course := courseHandler.NewCoursePackage(logger,dbInstance.DB)
+	timetable := timetableHandler.NewTimetablePackage(logger,dbInstance.DB)
 
 
 	// 7️⃣ Create HTTP server
-	srv := server.NewServer(cfg, logger, cacheClient, dbInstance, auth, reg,supabase)
+	srv := server.NewServer(cfg, logger, cacheClient, dbInstance, auth, reg,supabase,uni,course,timetable)
 
 	// 8️⃣ Start the server in a goroutine
 	go func() {

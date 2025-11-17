@@ -1,0 +1,1 @@
+DROP TABLE cohort_courses_offered;

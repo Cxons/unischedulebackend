@@ -65,7 +65,7 @@ func DeanMiddleware(regService service.RegService)func(http.Handler) http.Handle
 			cookieValue,err := req.Cookie("current_dean_id")
 			if err != nil{
 				slog.Error("Error retrieving current dean id","err:",err)
-				http.Error(res,"Error retrieving current dean id",status.InternalServerError.Code)
+				http.Error(res,"Error retrieving current dean id",status.Unauthorized.Code)
 				return
 	}
 			deanId := cookieValue.Value
@@ -98,6 +98,7 @@ func HodMiddleware(regService service.RegService)func(http.Handler) http.Handler
 			ctx := req.Context()
 			claims := ctx.Value(constants.UserInfoKey)
 			  if claims == nil {
+				slog.Info("error inhod confirmin middleware and claims ")
                 http.Error(res, "Unauthorized", status.Unauthorized.Code)
                 return
             }
@@ -115,6 +116,7 @@ func HodMiddleware(regService service.RegService)func(http.Handler) http.Handler
 
 
 		if userInfo.Role != LECTURER {
+			slog.Error("user role error","not userrole",userInfo.Role)
 				http.Error(res,"Unauthorized",status.Unauthorized.Code)
 				return
 			}

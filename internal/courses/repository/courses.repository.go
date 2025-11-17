@@ -19,8 +19,13 @@ type CourseRepository interface{
 	DeleteCourse(ctx context.Context,courseId uuid.UUID)error
 	SetCourseLecturers(ctx context.Context,param sqlc.SetCourseLecturersParams)(sqlc.CoursesLecturer,error)
 	UpdateCourseLecturers(ctx context.Context,param sqlc.UpdateCourseLecturersParams)(sqlc.CoursesLecturer,error)
+	SetCoursePossibleVenues(ctx context.Context,courseVenueData []sqlc.SetCoursePossibleVenueParams)error
+	SetCoursesForACohort(ctx context.Context,uniId uuid.UUID,cohortId uuid.UUID, courses[]uuid.UUID)error
+	FetchCoursePossibleVenues(ctx context.Context,courseId uuid.UUID)([]sqlc.FetchCoursePossibleVenuesRow,error)
+	DeleteCoursePossibleVenue(ctx context.Context,params sqlc.DeleteCoursePossibleVenueParams)error
+	RetrieveCoursesForACohort(ctx context.Context,cohortId uuid.UUID)([]sqlc.RetrieveCoursesForACohortRow,error)
+	RetrieveAllCourses(ctx context.Context, uniId uuid.UUID)([]sqlc.FetchAllCoursesRow,error)
 }
-
 type courseRepository struct {
 	store sqlc.Store
 	cq *queries.CoursesQueries
@@ -43,6 +48,8 @@ func (cq *courseRepository) DeleteCourse(ctx context.Context,courseId uuid.UUID)
 	return cq.cq.DeleteCourse(ctx,courseId)
 }
 
+
+// func (cq *courseRepository)
 
 func (cq *courseRepository) RetrieveCoursesForADepartment(ctx context.Context,courseParam sqlc.RetrieveCoursesForADepartmentParams)(bool,[]sqlc.RetrieveCoursesForADepartmentRow,error){
 	courses,err := cq.cq.RetrieveCoursesForDepartment(ctx,courseParam)
@@ -112,3 +119,33 @@ func (cq *courseRepository) SetCoursesForACohort(ctx context.Context,uniId uuid.
 		return nil
 	})
 }
+
+func (cq *courseRepository) SetCoursePossibleVenues(ctx context.Context,courseVenueData []sqlc.SetCoursePossibleVenueParams)error{
+	return cq.store.ExecTx(ctx,func(q *sqlc.Queries) error {
+		for _,val := range courseVenueData{
+			err := q.SetCoursePossibleVenue(ctx,val)
+			if err != nil{
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (cq *courseRepository) FetchCoursePossibleVenues(ctx context.Context,courseId uuid.UUID)([]sqlc.FetchCoursePossibleVenuesRow,error){
+	return cq.cq.FetchCoursePossibleVenues(ctx,courseId)
+}
+
+func (cq *courseRepository) DeleteCoursePossibleVenue(ctx context.Context,params sqlc.DeleteCoursePossibleVenueParams)error{
+	return cq.cq.DeleteCoursePossibleVenue(ctx,params)
+}
+
+func (cq *courseRepository) RetrieveCoursesForACohort(ctx context.Context,cohortId uuid.UUID)([]sqlc.RetrieveCoursesForACohortRow,error){
+	return cq.cq.RetrieveCoursesForACohort(ctx,cohortId)
+}
+
+func (cq *courseRepository) RetrieveAllCourses(ctx context.Context, uniId uuid.UUID)([]sqlc.FetchAllCoursesRow,error){
+	return cq.cq.FetchAllCourses(ctx,uniId)
+}
+
+// func (cq *courseRepository) Retrieve

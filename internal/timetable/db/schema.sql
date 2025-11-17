@@ -18,8 +18,8 @@ CREATE TABLE session_placements(
     course_id UUID NOT NULL REFERENCES courses(course_id) ON DELETE CASCADE,
     venue_id UUID NOT NULL REFERENCES venues(venue_id) ON DELETE CASCADE,
     day TEXT NOT NULL CHECK (day IN('Monday','Tuesday','Wednesday','Thursday','Friday')),
-    session_time TIME NOT NULL,
+    session_time TIMESTAMPTZ NOT NULL,
     university_id UUID NOT NULL REFERENCES  universities(university_id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
-)
+);

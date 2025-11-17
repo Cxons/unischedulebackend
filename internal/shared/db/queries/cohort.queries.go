@@ -42,3 +42,7 @@ func (cohq *CohortQueries) CountCohortsForAUni(ctx context.Context,uniId uuid.UU
 func (cohq *CohortQueries) RetrieveTotalCohortCourses(ctx context.Context,uniId uuid.UUID)([]sqlc.RetrieveCohortsForAllCoursesRow,error){
 	return cohq.q.RetrieveCohortsForAllCourses(ctx,uniId)
 }
+
+func (uq *CohortQueries) FetchCohortsForADepartment(ctx context.Context,deptId uuid.UUID)([]sqlc.FetchCohortsForADepartmentRow,error){
+	return uq.q.FetchCohortsForADepartment(ctx,deptId)
+}

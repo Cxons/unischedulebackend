@@ -96,6 +96,7 @@ SELECT * FROM departments
 WHERE faculty_id = $1 AND university_id = $2;
 
 
+
 -- name: CreateVenue :one
 INSERT INTO venues(
     venue_name,
@@ -140,4 +141,59 @@ INSERT INTO dept_venues(
 VALUES(
     $1,$2,$3
 );
+
+-- name: FetchCohortDetail :one
+SELECT 
+    cohort_id,
+    cohort_name,
+    cohort_level,
+    cohort_department_id,
+    cohort_faculty_id,
+    cohort_university_id
+FROM cohorts
+WHERE cohort_id = $1;
+
+-- name: RetrieveCoursesForACohort :many
+SELECT
+    c.course_id,
+    c.course_title,
+    c.course_credit_unit,
+    c.course_duration
+FROM cohort_courses_offered cco
+INNER JOIN courses c
+ON cco.course_id = c.course_id
+WHERE cohort_id = $1;
+
+
+-- name: FetchCohortsForADepartment :many
+SELECT 
+    cohort_id,
+    cohort_name,
+    cohort_level,
+    cohort_department_id,
+    cohort_faculty_id,
+    cohort_university_id
+FROM cohorts
+WHERE 
+    cohort_department_id = $1;
+
+
+
+-- name: CreateVenueUnavailablity :exec
+INSERT INTO venue_unavailability(
+    venue_id,reason,university_id,day,start_time,end_time
+)VALUES($1,$2,$3,$4,$5,$6);
+
+
+-- name: FetchAllDepartmentsForAUni :many
+SELECT 
+    department_id,
+    department_name,
+    faculty_id,
+    university_id,
+    number_of_levels,
+    department_code
+FROM departments
+WHERE university_id = $1;
+
 

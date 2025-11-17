@@ -20,6 +20,11 @@ WHERE cohort_university_id = $1;
 SELECT COUNT(*) FROM courses
 WHERE university_id = $1;
 
+-- name: UpdateLecturerUniversityId :exec
+UPDATE 
+    lecturers
+SET lecturer_university_id = $1
+WHERE lecturer_id = $2;
 
 -- name: RetrieveTotalLecturers :many
 SELECT 
@@ -61,27 +66,25 @@ WHERE
     AND
     lecturer_department_id = $3;
 
-
 -- name: RetrieveTotalLecturerUnavailability :many
 SELECT 
     l.lecturer_id,
     lu.day,
-    lu.start_time,
-    lu.end_time,
+    lu.start_time::text as start_time,
+    lu.end_time::text as end_time,
     lu.reason
 FROM lecturers l
 INNER JOIN lecturer_unavailability lu
 ON l.lecturer_id = lu.lecturer_id
 WHERE l.lecturer_university_id = $1;
 
-
 -- name: RetrieveTotalVenueUnavailability :many
 SELECT 
     v.venue_id,
     vu.reason,
     vu.day,
-    vu.start_time,
-    vu.end_time
+    vu.start_time::text as start_time,
+    vu.end_time::text as end_time
 FROM venues v
 INNER JOIN venue_unavailability vu
 ON v.venue_id = vu.venue_id
@@ -91,11 +94,8 @@ WHERE v.university_id = $1;
 SELECT 
     venue_id,
     venue_name,
-    venue_longitude,
-    venue_latitude,
-    location,
-    venue_image,
-    is_active
+    capacity,
+    location
 FROM venues
 WHERE university_id = $1;
 
@@ -131,11 +131,10 @@ INSERT INTO candidates(
 RETURNING *;
 
 
--- name: CreateSessionPlacements :one
+-- name: CreateSessionPlacements :exec
 INSERT INTO session_placements(
     candidate_id,session_idx,course_id,venue_id,day,session_time,university_id
-)VALUES($1,$2,$3,$4,$5,$6,$7)
-RETURNING *;
+)VALUES($1,$2,$3,$4,$5,$6,$7);
 
 -- name: DeprecateLatestCandidate :exec
 UPDATE candidates AS c

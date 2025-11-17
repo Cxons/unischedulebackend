@@ -20,37 +20,41 @@ func Routes(regHandler regHandler.RegHandler) chi.Router {
 		r.Use(adminMiddleware)
 		r.Post("/update",regHandler.UpdateAdmin)
 		r.Post("/university",regHandler.CreateUniversity)
+		r.Get("/pendingdean",regHandler.FetchDeanWaitDetails)
 		r.Get("/pendingdeans",regHandler.RetrievePendingDeans)
-		r.Get("/approvedean",regHandler.ApproveDean)
+		r.Post("/approvedean",regHandler.ApproveDean)
 	})
 
 	
 	r.Post("/dean/confirm",regHandler.RequestDeanConfirmation)
 	r.Get("/dean/confirm",regHandler.CheckDeanConfirmation)
-
+	r.Post("/dean/faculty",regHandler.CreateFaculty)
 	r.Route("/dean",func(r chi.Router) {
 		r.Use(deanMiddleware)
 		r.Post("/",regHandler.CreateDean)
-		r.Post("/faculty",regHandler.CreateFaculty)
+		r.Get("/pendinghod",regHandler.FetchHodWaitDetails)
 		r.Get("/pendinghods",regHandler.RetrievePendingHods)
-		r.Get("/approvehod",regHandler.ApproveHod)
+		r.Post("/approvehod",regHandler.ApproveHod)
 	})
 
 	
 
-	r.Post("/confirm",regHandler.RequestHodConfirmation)
-	r.Get("/confirm",regHandler.CheckHodConfirmation)
+	r.Post("/hod/confirm",regHandler.RequestHodConfirmation)
+	r.Get("/hod/confirm",regHandler.CheckHodConfirmation)
+	r.Post("/hod/department",regHandler.CreateDeparment)
 	r.Route("/hod",func(r chi.Router) {
 		r.Use(hodMiddleware)
 		r.Get("/",regHandler.CreateHod)
-		r.Post("/department",regHandler.CreateDeparment)
 		r.Get("/pendinglecturers",regHandler.RetrievePendingLecturers)
-		r.Get("/approvelecturers",regHandler.ApproveLecturer)
+		r.Post("/approvelecturer",regHandler.ApproveLecturer)
+		r.Get("/pendinglecturer",regHandler.FetchLecturerWaitDetails)
 	})
 
 
 	r.Post("/lecturer/confirm",regHandler.RequestLecturerConfirmation)
 	r.Get("/lecturer/confirm",regHandler.CheckLecturerConfirmation)
+
+	r.Post("/lecturer/unavailability",regHandler.CreateLecturerUnavailability)
 
 
 	return r;

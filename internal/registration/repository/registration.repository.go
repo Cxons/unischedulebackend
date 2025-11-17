@@ -6,9 +6,11 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	sqlc "github.com/Cxons/unischedulebackend/internal/shared/db"
 	"github.com/Cxons/unischedulebackend/internal/shared/db/queries"
+	"github.com/Cxons/unischedulebackend/internal/shared/utils"
 	"github.com/google/uuid"
 )
 
@@ -18,7 +20,7 @@ type RegRepository interface{
 	UpdateAdmin(ctx context.Context,adminInfo sqlc.UpdateAdminInfoParams)(bool,sqlc.UniversityAdmin,error)
 	CreateUniversity(ctx context.Context, uniInfo sqlc.CreateUniversityParams)(sqlc.University,error)
 	RetrievePendingDeans(ctx context.Context, uniId uuid.UUID)([]sqlc.DeanWaitingList,error)
-	ApproveDean(ctx context.Context,waitId uuid.UUID)(bool,sqlc.DeanWaitingList,error)
+	ApproveDean(ctx context.Context,waitId uuid.UUID,lecturerId uuid.UUID)(bool,sqlc.DeanWaitingList,error)
 	RetrievePendingHods(ctx context.Context, deanInfo sqlc.RetrievePendingHodsParams)([]sqlc.HodWaitingList,error)
 	ApproveHod(ctx context.Context, waitId uuid.UUID)(bool,sqlc.HodWaitingList,error)
 	RetrievePendingLecturers(ctx context.Context, hodInfo sqlc.RetrievePendingLecturersParams)([]sqlc.LecturerWaitingList,error)
@@ -29,13 +31,17 @@ type RegRepository interface{
 	CheckDeanConfirmation(ctx context.Context,waitId uuid.UUID)(sqlc.CheckDeanConfirmationRow,error)
 	CheckHodConfirmation(ctx context.Context, waitId uuid.UUID)(sqlc.CheckHodConfirmationRow,error)
 	CheckLecturerConfirmation(ctx context.Context, waitId uuid.UUID)(sqlc.CheckLecturerConfirmationRow,error)
-	CreateFaculty(ctx context.Context, facInfo sqlc.CreateFacultyParams)(sqlc.Faculty,error)
-	CreateDepartment(ctx context.Context,deptInfo sqlc.CreateDepartmentParams)error
+	CreateFaculty(ctx context.Context, facInfo sqlc.CreateFacultyParams, lecturerId uuid.UUID,startTime time.Time,endTime time.Time)(sqlc.Faculty,error,uuid.UUID)
+	CreateDepartment(ctx context.Context,deptInfo sqlc.CreateDepartmentParams,lecturerId uuid.UUID, startTime time.Time, endTime time.Time)(sqlc.Department,uuid.UUID,error)
 	CreateDean(ctx context.Context, deanInfo sqlc.CreateDeanParams)(sqlc.CurrentDean,error)
 	CreateHod(ctx context.Context, hodInfo sqlc.CreateHodParams)(sqlc.CurrentHod,error)
 	RetrieveAdmin(ctx context.Context,adminId uuid.UUID)(bool,sqlc.RetrieveAdminRow,error)
 	RetrieveDean(ctx context.Context,deanId uuid.UUID)(bool,sqlc.RetrieveDeanRow,error)
 	RetrieveHod(ctx context.Context, hodId uuid.UUID)(bool,sqlc.RetrieveHodRow,error)
+	CheckDeanConfirmationWithLecturerId(ctx context.Context,lecturerId uuid.UUID)(sqlc.CheckDeanConfirmationWithLecturerIdRow,error)
+	CheckHodConfirmationWithLecturerId(ctx context.Context,lecturerId uuid.UUID)(sqlc.CheckHodConfirmationWithLecturerIdRow,error)
+	CreateLecturerUnavailability(ctx context.Context, data []sqlc.CreateLecturerUnavailabilityParams)error
+
 }
 
 
@@ -94,7 +100,7 @@ func (rrp *regRepository) RetrievePendingDeans(ctx context.Context,uniId uuid.UU
 	return rrp.aq.RetrievePendingDeans(ctx,uniId)
 }
 
-func (rrp *regRepository) ApproveDean(ctx context.Context,waitId uuid.UUID)(bool,sqlc.DeanWaitingList,error){
+func (rrp *regRepository) ApproveDean(ctx context.Context,waitId uuid.UUID,lecturerId uuid.UUID)(bool,sqlc.DeanWaitingList,error){
 	deanRow,err := rrp.aq.ApproveDean(ctx,waitId)
 	if err != nil {
 		if err == sql.ErrNoRows{
@@ -106,15 +112,78 @@ func (rrp *regRepository) ApproveDean(ctx context.Context,waitId uuid.UUID)(bool
 }
 
 func (rrp *regRepository)RequestDeanConfirmation(ctx context.Context, dean sqlc.RequestDeanConfirmationParams)(sqlc.DeanWaitingList,error){
-	return rrp.dq.RequestDeanConfirmation(ctx,dean)
+	data,err := rrp.dq.RequestDeanConfirmation(ctx,dean)
+	 if err != nil {
+        // Check for unique constraint violation on phone_number
+        if strings.Contains(err.Error(), "unique constraint"){
+            return sqlc.DeanWaitingList{}, errors.New("Only one dean request creation allowed")
+        }
+        return sqlc.DeanWaitingList{}, err
+    }
+    return data, nil
 }
 
 func (rrp *regRepository) CheckDeanConfirmation(ctx context.Context,waitId uuid.UUID)(sqlc.CheckDeanConfirmationRow,error){
 	return rrp.dq.CheckDeanConfirmation(ctx,waitId)
 }
 
-func (rrp *regRepository) CreateFaculty(ctx context.Context, facInfo sqlc.CreateFacultyParams)(sqlc.Faculty,error){
-	return rrp.fq.CreateFaculty(ctx,facInfo)
+func (rrp *regRepository) CheckDeanConfirmationWithLecturerId(ctx context.Context,lecturerId uuid.UUID)(sqlc.CheckDeanConfirmationWithLecturerIdRow,error){
+	dean,err := rrp.dq.CheckDeanConfirmationWithLecturerId(ctx,lecturerId)
+	if err != nil {
+		if err == sql.ErrNoRows{
+		return sqlc.CheckDeanConfirmationWithLecturerIdRow{},errors.New("dean not confirmed")
+	}
+	return sqlc.CheckDeanConfirmationWithLecturerIdRow{},err
+}
+	return dean,nil
+}
+
+func (rrp *regRepository) CheckHodConfirmationWithLecturerId(ctx context.Context,lecturerId uuid.UUID)(sqlc.CheckHodConfirmationWithLecturerIdRow,error){
+	hod,err := rrp.hq.CheckHodConfirmationWithLecturerId(ctx,lecturerId)
+	if err != nil {
+		if err == sql.ErrNoRows{
+		return sqlc.CheckHodConfirmationWithLecturerIdRow{},errors.New("hod not confirmed")
+	}
+	return sqlc.CheckHodConfirmationWithLecturerIdRow{},err
+}
+	return hod,nil
+}
+
+
+func (rrp *regRepository) CreateFaculty(
+	ctx context.Context,
+	facInfo sqlc.CreateFacultyParams,
+	lecturerId uuid.UUID,
+	startTime time.Time,
+	endTime time.Time,
+) (sqlc.Faculty, error,uuid.UUID) {
+
+	var fac sqlc.Faculty
+	var deanId uuid.UUID
+
+	err := rrp.store.ExecTx(ctx, func(q *sqlc.Queries) error {
+		faculty, err := q.CreateFaculty(ctx, facInfo)
+		if err != nil {
+			return err
+		}
+
+		dean, deanErr := q.InsertCurrentDean(ctx, sqlc.InsertCurrentDeanParams{
+			LecturerID:  utils.UuidToNullUUID(lecturerId),
+			FacultyID:   utils.UuidToNullUUID(faculty.FacultyID), // ✅ FIXED HERE
+			UniversityID: utils.UuidToNullUUID(faculty.UniversityID),
+			StartDate:   startTime,
+			EndDate:     utils.TimeToNulltime(endTime),
+		})
+		if deanErr != nil {
+			return deanErr
+		}
+		deanId = dean.DeanID
+
+		fac = faculty
+		return nil
+	})
+
+	return fac, err,deanId
 }
 
 func (rrp *regRepository) RetrievePendingHods(ctx context.Context,deanInfo sqlc.RetrievePendingHodsParams)([]sqlc.HodWaitingList,error){
@@ -141,17 +210,19 @@ func (rrp *regRepository) CheckHodConfirmation(ctx context.Context, waitId uuid.
 	return rrp.hq.CheckHodConfirmation(ctx,waitId)
 } 
 
-func (rrp *regRepository) CreateDepartment(ctx context.Context,deptInfo sqlc.CreateDepartmentParams)error{
-
-	return rrp.store.ExecTx(ctx,func(q *sqlc.Queries)error{
+func (rrp *regRepository) CreateDepartment(ctx context.Context,deptInfo sqlc.CreateDepartmentParams,lecturerId uuid.UUID,startTime time.Time,endTime time.Time)(sqlc.Department,uuid.UUID,error){
+		var dept sqlc.Department
+		var hodId uuid.UUID
+	err := rrp.store.ExecTx(ctx,func(q *sqlc.Queries)error{
+	
 		department,createDeptErr := q.CreateDepartment(ctx,deptInfo)
 		if createDeptErr != nil{
 			return createDeptErr
 		}
 		for i := range department.NumberOfLevels{
 			cohort := sqlc.CreateCohortParams{
-				CohortName: department.DepartmentName + " " + strconv.Itoa(int(i)) + "00 level",
-				CohortLevel: i,
+				CohortName: department.DepartmentName + " " + strconv.Itoa(int(i + 1)) + "00 level",
+				CohortLevel: i+1,
 				CohortDepartmentID: department.DepartmentID,
 				CohortFacultyID: department.FacultyID,
 				CohortUniversityID: department.UniversityID,
@@ -161,8 +232,22 @@ func (rrp *regRepository) CreateDepartment(ctx context.Context,deptInfo sqlc.Cre
 				return createCohortErr
 			}
 		}
+		hod, hodErr := q.InsertCurrentHod(ctx, sqlc.InsertCurrentHodParams{
+			LecturerID:  utils.UuidToNullUUID(lecturerId),
+			DepartmentID:   utils.UuidToNullUUID(department.DepartmentID),
+			UniversityID: utils.UuidToNullUUID(department.UniversityID),
+			StartDate:   startTime,
+			EndDate:     utils.TimeToNulltime(endTime),
+		})
+		if hodErr != nil {
+			return hodErr
+		}
+		hodId = hod.HodID
+		dept = department
+
 		return nil
 	})
+	return dept,hodId,err
 }
 
 func (rrp *regRepository) RetrievePendingLecturers(ctx context.Context, hodInfo sqlc.RetrievePendingLecturersParams)([]sqlc.LecturerWaitingList,error){
@@ -228,4 +313,17 @@ func (rrp *regRepository) RetrieveHod(ctx context.Context, hodId uuid.UUID)(bool
 	}
 	return true,hod,nil
 	
+}
+
+
+func (rrp *regRepository) CreateLecturerUnavailability(ctx context.Context, data []sqlc.CreateLecturerUnavailabilityParams)error{
+	return rrp.store.ExecTx(ctx,func(q *sqlc.Queries) error {
+		for _,val := range data{
+			err := q.CreateLecturerUnavailability(ctx,val)
+			if err != nil{
+				return err
+			}
+		}
+		return  nil
+	})
 }

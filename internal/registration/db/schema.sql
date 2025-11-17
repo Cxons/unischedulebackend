@@ -58,9 +58,10 @@ ON university_admin(university_id,admin_number);
 -- Remember to create unique index to prevent 2 deans at the same time. This would be done in the queries.sql for this module
 CREATE TABLE current_dean(
     dean_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    lecturer_id UUID REFERENCES lecturers(lecturer_id) ON DELETE CASCADE,
+    lecturer_id UUID UNIQUE REFERENCES lecturers(lecturer_id) ON DELETE CASCADE,
     faculty_id UUID REFERENCES faculties(faculty_id) ON DELETE CASCADE,
     university_id UUID REFERENCES universities(university_id) ON DELETE CASCADE,
+    UNIQUE(lecturer_id,faculty_id),
     start_date DATE NOT NULL,
     end_date DATE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -76,9 +77,10 @@ WHERE end_date IS NULL;
 -- same here also create an index to prevent 2 hods at the same time in the same department
 CREATE TABLE current_hod(
     hod_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    lecturer_id UUID REFERENCES lecturers(lecturer_id) ON DELETE CASCADE,
+    lecturer_id UUID UNIQUE REFERENCES lecturers(lecturer_id) ON DELETE CASCADE,
     department_id UUID REFERENCES departments(department_id) ON DELETE CASCADE,
     university_id UUID REFERENCES universities(university_id) ON DELETE CASCADE,
+    UNIQUE(lecturer_id,department_id),
     start_date DATE NOT NULL,
     end_date DATE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -94,7 +96,7 @@ WHERE end_date IS NULL;
 
 CREATE TABLE dean_waiting_list(
     wait_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    lecturer_id UUID NOT NULL REFERENCES lecturers(lecturer_id) ON DELETE CASCADE,
+    lecturer_id UUID UNIQUE NOT NULL REFERENCES lecturers(lecturer_id) ON DELETE CASCADE,
     potential_faculty TEXT NOT NULL,
     additional_message TEXT DEFAULT NULL,
     university_id UUID NOT NULL REFERENCES universities(university_id) ON DELETE CASCADE,
@@ -104,7 +106,7 @@ CREATE TABLE dean_waiting_list(
 
 CREATE TABLE hod_waiting_list(
     wait_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    lecturer_id UUID NOT NULL REFERENCES lecturers(lecturer_id) ON DELETE CASCADE,
+    lecturer_id UUID UNIQUE NOT NULL REFERENCES lecturers(lecturer_id) ON DELETE CASCADE,
     potential_department TEXT NOT NULL,
     additional_message TEXT DEFAULT NULL,
     university_id UUID NOT NULL REFERENCES universities(university_id) ON DELETE CASCADE,
@@ -115,7 +117,7 @@ CREATE TABLE hod_waiting_list(
 
 CREATE TABLE lecturer_waiting_list(
     wait_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    lecturer_id UUID NOT NULL REFERENCES lecturers(lecturer_id) ON DELETE CASCADE,
+    lecturer_id UUID UNIQUE NOT NULL REFERENCES lecturers(lecturer_id) ON DELETE CASCADE,
     additional_message TEXT DEFAULT NULL,
     university_id UUID NOT NULL REFERENCES universities(university_id) ON DELETE CASCADE,
     faculty_id UUID NOT NULL REFERENCES faculties(faculty_id) ON DELETE CASCADE,

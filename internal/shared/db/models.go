@@ -290,7 +290,7 @@ type Venue struct {
 
 type VenueUnavailability struct {
 	ID           uuid.UUID
-	VenueID      uuid.NullUUID
+	VenueID      uuid.UUID
 	Reason       sql.NullString
 	UniversityID uuid.UUID
 	Day          sql.NullString

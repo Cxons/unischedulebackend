@@ -175,6 +175,50 @@ func (q *Queries) CheckDeanConfirmation(ctx context.Context, waitID uuid.UUID) (
 	return i, err
 }
 
+const checkDeanConfirmationWithLecturerId = `-- name: CheckDeanConfirmationWithLecturerId :one
+SELECT 
+    l.lecturer_id,
+    l.lecturer_first_name,
+    l.lecturer_last_name,
+    l.lecturer_profile_pic,
+    dwl.potential_faculty,
+    dwl.additional_message,
+    dwl.approved
+FROM 
+    dean_waiting_list dwl
+INNER JOIN 
+    lecturers l ON dwl.lecturer_id = l.lecturer_id
+WHERE 
+    l.lecturer_id = $1
+AND
+    dwl.approved = true
+`
+
+type CheckDeanConfirmationWithLecturerIdRow struct {
+	LecturerID         uuid.UUID
+	LecturerFirstName  string
+	LecturerLastName   string
+	LecturerProfilePic sql.NullString
+	PotentialFaculty   string
+	AdditionalMessage  sql.NullString
+	Approved           sql.NullBool
+}
+
+func (q *Queries) CheckDeanConfirmationWithLecturerId(ctx context.Context, lecturerID uuid.UUID) (CheckDeanConfirmationWithLecturerIdRow, error) {
+	row := q.db.QueryRowContext(ctx, checkDeanConfirmationWithLecturerId, lecturerID)
+	var i CheckDeanConfirmationWithLecturerIdRow
+	err := row.Scan(
+		&i.LecturerID,
+		&i.LecturerFirstName,
+		&i.LecturerLastName,
+		&i.LecturerProfilePic,
+		&i.PotentialFaculty,
+		&i.AdditionalMessage,
+		&i.Approved,
+	)
+	return i, err
+}
+
 const checkHodConfirmation = `-- name: CheckHodConfirmation :one
 SELECT 
     l.lecturer_id,
@@ -205,6 +249,50 @@ type CheckHodConfirmationRow struct {
 func (q *Queries) CheckHodConfirmation(ctx context.Context, waitID uuid.UUID) (CheckHodConfirmationRow, error) {
 	row := q.db.QueryRowContext(ctx, checkHodConfirmation, waitID)
 	var i CheckHodConfirmationRow
+	err := row.Scan(
+		&i.LecturerID,
+		&i.LecturerFirstName,
+		&i.LecturerLastName,
+		&i.LecturerProfilePic,
+		&i.PotentialDepartment,
+		&i.AdditionalMessage,
+		&i.Approved,
+	)
+	return i, err
+}
+
+const checkHodConfirmationWithLecturerId = `-- name: CheckHodConfirmationWithLecturerId :one
+SELECT 
+    l.lecturer_id,
+    l.lecturer_first_name,
+    l.lecturer_last_name,
+    l.lecturer_profile_pic,
+    hwl.potential_department,
+    hwl.additional_message,
+    hwl.approved
+FROM 
+    hod_waiting_list hwl
+INNER JOIN 
+    lecturers l ON hwl.lecturer_id = l.lecturer_id
+WHERE 
+    l.lecturer_id = $1
+AND
+    hwl.approved = true
+`
+
+type CheckHodConfirmationWithLecturerIdRow struct {
+	LecturerID          uuid.UUID
+	LecturerFirstName   string
+	LecturerLastName    string
+	LecturerProfilePic  sql.NullString
+	PotentialDepartment string
+	AdditionalMessage   sql.NullString
+	Approved            sql.NullBool
+}
+
+func (q *Queries) CheckHodConfirmationWithLecturerId(ctx context.Context, lecturerID uuid.UUID) (CheckHodConfirmationWithLecturerIdRow, error) {
+	row := q.db.QueryRowContext(ctx, checkHodConfirmationWithLecturerId, lecturerID)
+	var i CheckHodConfirmationWithLecturerIdRow
 	err := row.Scan(
 		&i.LecturerID,
 		&i.LecturerFirstName,
@@ -490,6 +578,34 @@ func (q *Queries) CreateCohortCourse(ctx context.Context, arg CreateCohortCourse
 	return i, err
 }
 
+const createCohortCoursesOffered = `-- name: CreateCohortCoursesOffered :one
+INSERT INTO cohort_courses_offered(
+    cohort_id,course_id,university_id
+)VALUES(
+    $1,$2,$3
+)
+RETURNING cohort_id, course_id, university_id, created_at, updated_at
+`
+
+type CreateCohortCoursesOfferedParams struct {
+	CohortID     uuid.UUID
+	CourseID     uuid.UUID
+	UniversityID uuid.UUID
+}
+
+func (q *Queries) CreateCohortCoursesOffered(ctx context.Context, arg CreateCohortCoursesOfferedParams) (CohortCoursesOffered, error) {
+	row := q.db.QueryRowContext(ctx, createCohortCoursesOffered, arg.CohortID, arg.CourseID, arg.UniversityID)
+	var i CohortCoursesOffered
+	err := row.Scan(
+		&i.CohortID,
+		&i.CourseID,
+		&i.UniversityID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const createCourse = `-- name: CreateCourse :one
 INSERT INTO courses(
     course_code,
@@ -700,11 +816,35 @@ func (q *Queries) CreateHod(ctx context.Context, arg CreateHodParams) (CurrentHo
 	return i, err
 }
 
-const createSessionPlacements = `-- name: CreateSessionPlacements :one
+const createLecturerUnavailability = `-- name: CreateLecturerUnavailability :exec
+INSERT INTO lecturer_unavailability(
+    lecturer_id,day,start_time,end_time,reason
+)VALUES($1,$2,$3,$4,$5)
+`
+
+type CreateLecturerUnavailabilityParams struct {
+	LecturerID uuid.UUID
+	Day        string
+	StartTime  time.Time
+	EndTime    time.Time
+	Reason     sql.NullString
+}
+
+func (q *Queries) CreateLecturerUnavailability(ctx context.Context, arg CreateLecturerUnavailabilityParams) error {
+	_, err := q.db.ExecContext(ctx, createLecturerUnavailability,
+		arg.LecturerID,
+		arg.Day,
+		arg.StartTime,
+		arg.EndTime,
+		arg.Reason,
+	)
+	return err
+}
+
+const createSessionPlacements = `-- name: CreateSessionPlacements :exec
 INSERT INTO session_placements(
     candidate_id,session_idx,course_id,venue_id,day,session_time,university_id
 )VALUES($1,$2,$3,$4,$5,$6,$7)
-RETURNING id, candidate_id, session_idx, course_id, venue_id, day, session_time, university_id, created_at, updated_at
 `
 
 type CreateSessionPlacementsParams struct {
@@ -717,8 +857,8 @@ type CreateSessionPlacementsParams struct {
 	UniversityID uuid.UUID
 }
 
-func (q *Queries) CreateSessionPlacements(ctx context.Context, arg CreateSessionPlacementsParams) (SessionPlacement, error) {
-	row := q.db.QueryRowContext(ctx, createSessionPlacements,
+func (q *Queries) CreateSessionPlacements(ctx context.Context, arg CreateSessionPlacementsParams) error {
+	_, err := q.db.ExecContext(ctx, createSessionPlacements,
 		arg.CandidateID,
 		arg.SessionIdx,
 		arg.CourseID,
@@ -727,20 +867,7 @@ func (q *Queries) CreateSessionPlacements(ctx context.Context, arg CreateSession
 		arg.SessionTime,
 		arg.UniversityID,
 	)
-	var i SessionPlacement
-	err := row.Scan(
-		&i.ID,
-		&i.CandidateID,
-		&i.SessionIdx,
-		&i.CourseID,
-		&i.VenueID,
-		&i.Day,
-		&i.SessionTime,
-		&i.UniversityID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+	return err
 }
 
 const createUniversity = `-- name: CreateUniversity :one
@@ -842,6 +969,33 @@ func (q *Queries) CreateVenue(ctx context.Context, arg CreateVenueParams) (Venue
 	return i, err
 }
 
+const createVenueUnavailablity = `-- name: CreateVenueUnavailablity :exec
+INSERT INTO venue_unavailability(
+    venue_id,reason,university_id,day,start_time,end_time
+)VALUES($1,$2,$3,$4,$5,$6)
+`
+
+type CreateVenueUnavailablityParams struct {
+	VenueID      uuid.UUID
+	Reason       sql.NullString
+	UniversityID uuid.UUID
+	Day          sql.NullString
+	StartTime    sql.NullTime
+	EndTime      sql.NullTime
+}
+
+func (q *Queries) CreateVenueUnavailablity(ctx context.Context, arg CreateVenueUnavailablityParams) error {
+	_, err := q.db.ExecContext(ctx, createVenueUnavailablity,
+		arg.VenueID,
+		arg.Reason,
+		arg.UniversityID,
+		arg.Day,
+		arg.StartTime,
+		arg.EndTime,
+	)
+	return err
+}
+
 const deleteCourse = `-- name: DeleteCourse :exec
 DELETE FROM courses
 WHERE course_id = $1
@@ -849,6 +1003,22 @@ WHERE course_id = $1
 
 func (q *Queries) DeleteCourse(ctx context.Context, courseID uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteCourse, courseID)
+	return err
+}
+
+const deleteCoursePossibleVenue = `-- name: DeleteCoursePossibleVenue :exec
+DELETE FROM courses_possible_venues
+WHERE course_id = $1
+AND venue_id = $2
+`
+
+type DeleteCoursePossibleVenueParams struct {
+	CourseID uuid.UUID
+	VenueID  uuid.UUID
+}
+
+func (q *Queries) DeleteCoursePossibleVenue(ctx context.Context, arg DeleteCoursePossibleVenueParams) error {
+	_, err := q.db.ExecContext(ctx, deleteCoursePossibleVenue, arg.CourseID, arg.VenueID)
 	return err
 }
 
@@ -891,32 +1061,422 @@ func (q *Queries) DeprecateLatestCandidate(ctx context.Context, universityID uui
 	return err
 }
 
-const fetchCoursesForACohort = `-- name: FetchCoursesForACohort :many
+const fetchAllCourses = `-- name: FetchAllCourses :many
+
 SELECT
-    cohort_id
-FROM cohort_courses_offered
-WHERE cohort_id = $1
-AND university_id = $2
+    course_id,
+    course_code,
+    course_title,
+    course_credit_unit,
+    course_duration,
+    sessions_per_week,
+    level,
+    semester
+FROM courses
+WHERE university_id = $1
 `
 
-type FetchCoursesForACohortParams struct {
-	CohortID     uuid.UUID
-	UniversityID uuid.UUID
+type FetchAllCoursesRow struct {
+	CourseID         uuid.UUID
+	CourseCode       string
+	CourseTitle      string
+	CourseCreditUnit int32
+	CourseDuration   int32
+	SessionsPerWeek  int32
+	Level            int32
+	Semester         string
 }
 
-func (q *Queries) FetchCoursesForACohort(ctx context.Context, arg FetchCoursesForACohortParams) ([]uuid.UUID, error) {
-	rows, err := q.db.QueryContext(ctx, fetchCoursesForACohort, arg.CohortID, arg.UniversityID)
+// -- name: FetchCoursesForACohort :many
+// SELECT
+//
+//	cohort_id
+//
+// FROM cohort_courses_offered
+// WHERE cohort_id = $1
+// AND university_id = $2;
+func (q *Queries) FetchAllCourses(ctx context.Context, universityID uuid.UUID) ([]FetchAllCoursesRow, error) {
+	rows, err := q.db.QueryContext(ctx, fetchAllCourses, universityID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []uuid.UUID
+	var items []FetchAllCoursesRow
 	for rows.Next() {
-		var cohort_id uuid.UUID
-		if err := rows.Scan(&cohort_id); err != nil {
+		var i FetchAllCoursesRow
+		if err := rows.Scan(
+			&i.CourseID,
+			&i.CourseCode,
+			&i.CourseTitle,
+			&i.CourseCreditUnit,
+			&i.CourseDuration,
+			&i.SessionsPerWeek,
+			&i.Level,
+			&i.Semester,
+		); err != nil {
 			return nil, err
 		}
-		items = append(items, cohort_id)
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const fetchAllDepartmentsForAUni = `-- name: FetchAllDepartmentsForAUni :many
+SELECT 
+    department_id,
+    department_name,
+    faculty_id,
+    university_id,
+    number_of_levels,
+    department_code
+FROM departments
+WHERE university_id = $1
+`
+
+type FetchAllDepartmentsForAUniRow struct {
+	DepartmentID   uuid.UUID
+	DepartmentName string
+	FacultyID      uuid.UUID
+	UniversityID   uuid.UUID
+	NumberOfLevels int32
+	DepartmentCode sql.NullString
+}
+
+func (q *Queries) FetchAllDepartmentsForAUni(ctx context.Context, universityID uuid.UUID) ([]FetchAllDepartmentsForAUniRow, error) {
+	rows, err := q.db.QueryContext(ctx, fetchAllDepartmentsForAUni, universityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FetchAllDepartmentsForAUniRow
+	for rows.Next() {
+		var i FetchAllDepartmentsForAUniRow
+		if err := rows.Scan(
+			&i.DepartmentID,
+			&i.DepartmentName,
+			&i.FacultyID,
+			&i.UniversityID,
+			&i.NumberOfLevels,
+			&i.DepartmentCode,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const fetchApprovedLecturersInDepartment = `-- name: FetchApprovedLecturersInDepartment :many
+SELECT 
+    l.lecturer_id,
+    l.lecturer_first_name,
+    l.lecturer_last_name,
+    l.lecturer_middle_name,
+    l.lecturer_email,
+    l.lecturer_profile_pic,
+    lw.wait_id,
+    lw.additional_message,
+    lw.approved
+FROM lecturers l
+JOIN lecturer_waiting_list lw
+    ON l.lecturer_id = lw.lecturer_id
+WHERE lw.department_id = $1
+  AND lw.approved = TRUE
+`
+
+type FetchApprovedLecturersInDepartmentRow struct {
+	LecturerID         uuid.UUID
+	LecturerFirstName  string
+	LecturerLastName   string
+	LecturerMiddleName sql.NullString
+	LecturerEmail      string
+	LecturerProfilePic sql.NullString
+	WaitID             uuid.UUID
+	AdditionalMessage  sql.NullString
+	Approved           sql.NullBool
+}
+
+func (q *Queries) FetchApprovedLecturersInDepartment(ctx context.Context, departmentID uuid.UUID) ([]FetchApprovedLecturersInDepartmentRow, error) {
+	rows, err := q.db.QueryContext(ctx, fetchApprovedLecturersInDepartment, departmentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FetchApprovedLecturersInDepartmentRow
+	for rows.Next() {
+		var i FetchApprovedLecturersInDepartmentRow
+		if err := rows.Scan(
+			&i.LecturerID,
+			&i.LecturerFirstName,
+			&i.LecturerLastName,
+			&i.LecturerMiddleName,
+			&i.LecturerEmail,
+			&i.LecturerProfilePic,
+			&i.WaitID,
+			&i.AdditionalMessage,
+			&i.Approved,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const fetchCohortDetail = `-- name: FetchCohortDetail :one
+SELECT 
+    cohort_id,
+    cohort_name,
+    cohort_level,
+    cohort_department_id,
+    cohort_faculty_id,
+    cohort_university_id
+FROM cohorts
+WHERE cohort_id = $1
+`
+
+type FetchCohortDetailRow struct {
+	CohortID           uuid.UUID
+	CohortName         string
+	CohortLevel        int32
+	CohortDepartmentID uuid.UUID
+	CohortFacultyID    uuid.UUID
+	CohortUniversityID uuid.UUID
+}
+
+func (q *Queries) FetchCohortDetail(ctx context.Context, cohortID uuid.UUID) (FetchCohortDetailRow, error) {
+	row := q.db.QueryRowContext(ctx, fetchCohortDetail, cohortID)
+	var i FetchCohortDetailRow
+	err := row.Scan(
+		&i.CohortID,
+		&i.CohortName,
+		&i.CohortLevel,
+		&i.CohortDepartmentID,
+		&i.CohortFacultyID,
+		&i.CohortUniversityID,
+	)
+	return i, err
+}
+
+const fetchCohortsForADepartment = `-- name: FetchCohortsForADepartment :many
+SELECT 
+    cohort_id,
+    cohort_name,
+    cohort_level,
+    cohort_department_id,
+    cohort_faculty_id,
+    cohort_university_id
+FROM cohorts
+WHERE 
+    cohort_department_id = $1
+`
+
+type FetchCohortsForADepartmentRow struct {
+	CohortID           uuid.UUID
+	CohortName         string
+	CohortLevel        int32
+	CohortDepartmentID uuid.UUID
+	CohortFacultyID    uuid.UUID
+	CohortUniversityID uuid.UUID
+}
+
+func (q *Queries) FetchCohortsForADepartment(ctx context.Context, cohortDepartmentID uuid.UUID) ([]FetchCohortsForADepartmentRow, error) {
+	rows, err := q.db.QueryContext(ctx, fetchCohortsForADepartment, cohortDepartmentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FetchCohortsForADepartmentRow
+	for rows.Next() {
+		var i FetchCohortsForADepartmentRow
+		if err := rows.Scan(
+			&i.CohortID,
+			&i.CohortName,
+			&i.CohortLevel,
+			&i.CohortDepartmentID,
+			&i.CohortFacultyID,
+			&i.CohortUniversityID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const fetchCoursePossibleVenues = `-- name: FetchCoursePossibleVenues :many
+SELECT 
+    cpv.venue_id,
+    v.venue_name,
+    v.capacity
+FROM courses_possible_venues cpv
+INNER JOIN 
+    venues v
+ON 
+    cpv.venue_id = v.venue_id
+WHERE
+    course_id = $1
+`
+
+type FetchCoursePossibleVenuesRow struct {
+	VenueID   uuid.UUID
+	VenueName string
+	Capacity  int32
+}
+
+func (q *Queries) FetchCoursePossibleVenues(ctx context.Context, courseID uuid.UUID) ([]FetchCoursePossibleVenuesRow, error) {
+	rows, err := q.db.QueryContext(ctx, fetchCoursePossibleVenues, courseID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FetchCoursePossibleVenuesRow
+	for rows.Next() {
+		var i FetchCoursePossibleVenuesRow
+		if err := rows.Scan(&i.VenueID, &i.VenueName, &i.Capacity); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const fetchLecturerUnavailability = `-- name: FetchLecturerUnavailability :many
+SELECT
+    lecturer_id,
+    day,
+    start_time,
+    end_time,
+    reason
+FROM lecturer_unavailability
+WHERE lecturer_id = $1
+`
+
+type FetchLecturerUnavailabilityRow struct {
+	LecturerID uuid.UUID
+	Day        string
+	StartTime  time.Time
+	EndTime    time.Time
+	Reason     sql.NullString
+}
+
+func (q *Queries) FetchLecturerUnavailability(ctx context.Context, lecturerID uuid.UUID) ([]FetchLecturerUnavailabilityRow, error) {
+	rows, err := q.db.QueryContext(ctx, fetchLecturerUnavailability, lecturerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FetchLecturerUnavailabilityRow
+	for rows.Next() {
+		var i FetchLecturerUnavailabilityRow
+		if err := rows.Scan(
+			&i.LecturerID,
+			&i.Day,
+			&i.StartTime,
+			&i.EndTime,
+			&i.Reason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const fetchStudentCourses = `-- name: FetchStudentCourses :many
+SELECT
+    c.course_id,
+    c.course_code,
+    c.course_title,
+    c.course_credit_unit,
+    c.course_duration,
+    c.department_id,
+    c.sessions_per_week,
+    c.lecturer_id,
+    c.semester,
+    c.level,
+    c.department_id
+FROM student_courses_offered sco
+JOIN courses c
+ON c.course_id = sco.course_id
+WHERE student_id = $1
+`
+
+type FetchStudentCoursesRow struct {
+	CourseID         uuid.UUID
+	CourseCode       string
+	CourseTitle      string
+	CourseCreditUnit int32
+	CourseDuration   int32
+	DepartmentID     uuid.UUID
+	SessionsPerWeek  int32
+	LecturerID       uuid.NullUUID
+	Semester         string
+	Level            int32
+	DepartmentID_2   uuid.UUID
+}
+
+func (q *Queries) FetchStudentCourses(ctx context.Context, studentID uuid.UUID) ([]FetchStudentCoursesRow, error) {
+	rows, err := q.db.QueryContext(ctx, fetchStudentCourses, studentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FetchStudentCoursesRow
+	for rows.Next() {
+		var i FetchStudentCoursesRow
+		if err := rows.Scan(
+			&i.CourseID,
+			&i.CourseCode,
+			&i.CourseTitle,
+			&i.CourseCreditUnit,
+			&i.CourseDuration,
+			&i.DepartmentID,
+			&i.SessionsPerWeek,
+			&i.LecturerID,
+			&i.Semester,
+			&i.Level,
+			&i.DepartmentID_2,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -1087,6 +1647,90 @@ func (q *Queries) GetStudentTimetableSessions(ctx context.Context, studentID uui
 		return nil, err
 	}
 	return items, nil
+}
+
+const insertCurrentDean = `-- name: InsertCurrentDean :one
+INSERT INTO current_dean (
+    lecturer_id,
+    faculty_id,
+    university_id,
+    start_date,
+    end_date
+)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING dean_id, lecturer_id, faculty_id, university_id, start_date, end_date, created_at, updated_at
+`
+
+type InsertCurrentDeanParams struct {
+	LecturerID   uuid.NullUUID
+	FacultyID    uuid.NullUUID
+	UniversityID uuid.NullUUID
+	StartDate    time.Time
+	EndDate      sql.NullTime
+}
+
+func (q *Queries) InsertCurrentDean(ctx context.Context, arg InsertCurrentDeanParams) (CurrentDean, error) {
+	row := q.db.QueryRowContext(ctx, insertCurrentDean,
+		arg.LecturerID,
+		arg.FacultyID,
+		arg.UniversityID,
+		arg.StartDate,
+		arg.EndDate,
+	)
+	var i CurrentDean
+	err := row.Scan(
+		&i.DeanID,
+		&i.LecturerID,
+		&i.FacultyID,
+		&i.UniversityID,
+		&i.StartDate,
+		&i.EndDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const insertCurrentHod = `-- name: InsertCurrentHod :one
+INSERT INTO current_hod (
+    lecturer_id,
+    department_id,
+    university_id,
+    start_date,
+    end_date
+)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING hod_id, lecturer_id, department_id, university_id, start_date, end_date, created_at, updated_at
+`
+
+type InsertCurrentHodParams struct {
+	LecturerID   uuid.NullUUID
+	DepartmentID uuid.NullUUID
+	UniversityID uuid.NullUUID
+	StartDate    time.Time
+	EndDate      sql.NullTime
+}
+
+func (q *Queries) InsertCurrentHod(ctx context.Context, arg InsertCurrentHodParams) (CurrentHod, error) {
+	row := q.db.QueryRowContext(ctx, insertCurrentHod,
+		arg.LecturerID,
+		arg.DepartmentID,
+		arg.UniversityID,
+		arg.StartDate,
+		arg.EndDate,
+	)
+	var i CurrentHod
+	err := row.Scan(
+		&i.HodID,
+		&i.LecturerID,
+		&i.DepartmentID,
+		&i.UniversityID,
+		&i.StartDate,
+		&i.EndDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const insertOtp = `-- name: InsertOtp :one
@@ -1680,23 +2324,17 @@ const retrieveAllVenues = `-- name: RetrieveAllVenues :many
 SELECT 
     venue_id,
     venue_name,
-    venue_longitude,
-    venue_latitude,
-    location,
-    venue_image,
-    is_active
+    capacity,
+    location
 FROM venues
 WHERE university_id = $1
 `
 
 type RetrieveAllVenuesRow struct {
-	VenueID        uuid.UUID
-	VenueName      string
-	VenueLongitude sql.NullFloat64
-	VenueLatitude  sql.NullFloat64
-	Location       sql.NullString
-	VenueImage     sql.NullString
-	IsActive       sql.NullBool
+	VenueID   uuid.UUID
+	VenueName string
+	Capacity  int32
+	Location  sql.NullString
 }
 
 func (q *Queries) RetrieveAllVenues(ctx context.Context, universityID uuid.UUID) ([]RetrieveAllVenuesRow, error) {
@@ -1711,11 +2349,8 @@ func (q *Queries) RetrieveAllVenues(ctx context.Context, universityID uuid.UUID)
 		if err := rows.Scan(
 			&i.VenueID,
 			&i.VenueName,
-			&i.VenueLongitude,
-			&i.VenueLatitude,
+			&i.Capacity,
 			&i.Location,
-			&i.VenueImage,
-			&i.IsActive,
 		); err != nil {
 			return nil, err
 		}
@@ -1768,8 +2403,56 @@ func (q *Queries) RetrieveCohortsForAllCourses(ctx context.Context, universityID
 	return items, nil
 }
 
+const retrieveCoursesForACohort = `-- name: RetrieveCoursesForACohort :many
+SELECT
+    c.course_id,
+    c.course_title,
+    c.course_credit_unit,
+    c.course_duration
+FROM cohort_courses_offered cco
+INNER JOIN courses c
+ON cco.course_id = c.course_id
+WHERE cohort_id = $1
+`
+
+type RetrieveCoursesForACohortRow struct {
+	CourseID         uuid.UUID
+	CourseTitle      string
+	CourseCreditUnit int32
+	CourseDuration   int32
+}
+
+func (q *Queries) RetrieveCoursesForACohort(ctx context.Context, cohortID uuid.UUID) ([]RetrieveCoursesForACohortRow, error) {
+	rows, err := q.db.QueryContext(ctx, retrieveCoursesForACohort, cohortID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RetrieveCoursesForACohortRow
+	for rows.Next() {
+		var i RetrieveCoursesForACohortRow
+		if err := rows.Scan(
+			&i.CourseID,
+			&i.CourseTitle,
+			&i.CourseCreditUnit,
+			&i.CourseDuration,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const retrieveCoursesForADepartment = `-- name: RetrieveCoursesForADepartment :many
 SELECT
+    course_id,
     course_code,
     course_title,
     course_credit_unit,
@@ -1790,6 +2473,7 @@ type RetrieveCoursesForADepartmentParams struct {
 }
 
 type RetrieveCoursesForADepartmentRow struct {
+	CourseID         uuid.UUID
 	CourseCode       string
 	CourseTitle      string
 	CourseCreditUnit int32
@@ -1812,6 +2496,7 @@ func (q *Queries) RetrieveCoursesForADepartment(ctx context.Context, arg Retriev
 	for rows.Next() {
 		var i RetrieveCoursesForADepartmentRow
 		if err := rows.Scan(
+			&i.CourseID,
 			&i.CourseCode,
 			&i.CourseTitle,
 			&i.CourseCreditUnit,
@@ -2273,8 +2958,8 @@ const retrieveTotalLecturerUnavailability = `-- name: RetrieveTotalLecturerUnava
 SELECT 
     l.lecturer_id,
     lu.day,
-    lu.start_time,
-    lu.end_time,
+    lu.start_time::text as start_time,
+    lu.end_time::text as end_time,
     lu.reason
 FROM lecturers l
 INNER JOIN lecturer_unavailability lu
@@ -2285,8 +2970,8 @@ WHERE l.lecturer_university_id = $1
 type RetrieveTotalLecturerUnavailabilityRow struct {
 	LecturerID uuid.UUID
 	Day        string
-	StartTime  time.Time
-	EndTime    time.Time
+	StartTime  string
+	EndTime    string
 	Reason     sql.NullString
 }
 
@@ -2375,8 +3060,8 @@ SELECT
     v.venue_id,
     vu.reason,
     vu.day,
-    vu.start_time,
-    vu.end_time
+    vu.start_time::text as start_time,
+    vu.end_time::text as end_time
 FROM venues v
 INNER JOIN venue_unavailability vu
 ON v.venue_id = vu.venue_id
@@ -2387,8 +3072,8 @@ type RetrieveTotalVenueUnavailabilityRow struct {
 	VenueID   uuid.UUID
 	Reason    sql.NullString
 	Day       sql.NullString
-	StartTime sql.NullTime
-	EndTime   sql.NullTime
+	StartTime string
+	EndTime   string
 }
 
 func (q *Queries) RetrieveTotalVenueUnavailability(ctx context.Context, universityID uuid.UUID) ([]RetrieveTotalVenueUnavailabilityRow, error) {
@@ -2505,6 +3190,25 @@ func (q *Queries) SetCourseLecturers(ctx context.Context, arg SetCourseLecturers
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const setCoursePossibleVenue = `-- name: SetCoursePossibleVenue :exec
+INSERT INTO courses_possible_venues(
+    course_id,
+    venue_id,
+    university_id
+)VALUES($1,$2,$3)
+`
+
+type SetCoursePossibleVenueParams struct {
+	CourseID     uuid.UUID
+	VenueID      uuid.UUID
+	UniversityID uuid.NullUUID
+}
+
+func (q *Queries) SetCoursePossibleVenue(ctx context.Context, arg SetCoursePossibleVenueParams) error {
+	_, err := q.db.ExecContext(ctx, setCoursePossibleVenue, arg.CourseID, arg.VenueID, arg.UniversityID)
+	return err
 }
 
 const setDepartmentVenue = `-- name: SetDepartmentVenue :exec
@@ -2915,6 +3619,50 @@ func (q *Queries) UpdateLecturerInfo(ctx context.Context, arg UpdateLecturerInfo
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateLecturerUnavailability = `-- name: UpdateLecturerUnavailability :exec
+UPDATE lecturer_unavailability
+SET
+    day = $1,
+    start_time = $2,
+    end_time = $3
+WHERE
+    id = $4
+`
+
+type UpdateLecturerUnavailabilityParams struct {
+	Day       string
+	StartTime time.Time
+	EndTime   time.Time
+	ID        uuid.UUID
+}
+
+func (q *Queries) UpdateLecturerUnavailability(ctx context.Context, arg UpdateLecturerUnavailabilityParams) error {
+	_, err := q.db.ExecContext(ctx, updateLecturerUnavailability,
+		arg.Day,
+		arg.StartTime,
+		arg.EndTime,
+		arg.ID,
+	)
+	return err
+}
+
+const updateLecturerUniversityId = `-- name: UpdateLecturerUniversityId :exec
+UPDATE 
+    lecturers
+SET lecturer_university_id = $1
+WHERE lecturer_id = $2
+`
+
+type UpdateLecturerUniversityIdParams struct {
+	LecturerUniversityID uuid.NullUUID
+	LecturerID           uuid.UUID
+}
+
+func (q *Queries) UpdateLecturerUniversityId(ctx context.Context, arg UpdateLecturerUniversityIdParams) error {
+	_, err := q.db.ExecContext(ctx, updateLecturerUniversityId, arg.LecturerUniversityID, arg.LecturerID)
+	return err
 }
 
 const updateOtp = `-- name: UpdateOtp :one
